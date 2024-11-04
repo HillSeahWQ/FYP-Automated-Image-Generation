@@ -1,3 +1,14 @@
+1. Activate conda environment named ldm can be created and activated with:
+
+    conda env create -f environment.yaml
+    conda activate ldm
+
+2. Download the  pre-trained models under the models section and place them appropriately in the specified paths
+
+3. bash run.sh
+
+
+
 Models
 1. human face diffusion model provided by SDEdit
 - place the model in this directory ./exp/logs/celeba/celeba_hq.ckpt

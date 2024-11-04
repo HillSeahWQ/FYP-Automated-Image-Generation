@@ -1,0 +1,15 @@
+1. Activate conda environment named ldm can be created and activated with:
+
+    conda env create -f environment.yaml
+    conda activate ldm
+
+2. Download the  pre-trained models under the models section and place them appropriately in the specified paths
+
+3. bash run.sh
+
+
+
+Models
+1. stable diffusion model weights (SD-v1-4)
+- place the model in this directory `models/ldm/stable-diffusion-v1/model.ckpt`
+    - https://huggingface.co/CompVis/stable-diffusion-v1-4      (https://huggingface.co/CompVis)

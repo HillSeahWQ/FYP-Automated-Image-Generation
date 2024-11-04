@@ -1,7 +1,9 @@
+import os
 import torch
 from torch import nn
 from .facial_recognition.model_irse import Backbone
 import torchvision
+
 
 
 class IDLoss(nn.Module):
@@ -9,7 +11,7 @@ class IDLoss(nn.Module):
         super(IDLoss, self).__init__()
 #         print('Loading ResNet ArcFace for ID Loss')
         self.facenet = Backbone(input_size=112, num_layers=50, drop_ratio=0.6, mode='ir_se')
-        self.facenet.load_state_dict(torch.load("/workspace/ddgm/functions/arcface/model_ir_se50.pth"))
+        self.facenet.load_state_dict(torch.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "model_ir_se50.pth"))) # changed from"/workspace/ddgm/functions/arcface/model_ir_se50.pth"
         self.pool = torch.nn.AdaptiveAvgPool2d((256, 256))
         self.face_pool = torch.nn.AdaptiveAvgPool2d((112, 112))
         self.facenet.eval()

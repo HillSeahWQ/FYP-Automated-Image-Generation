@@ -1,5 +1,5 @@
 """SAMPLING ONLY."""
-
+import os
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -7,7 +7,7 @@ from tqdm import tqdm
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, extract_into_tensor
 
 from .clip.base_clip import CLIPEncoder
-image_encoder = CLIPEncoder(need_ref=True, ref_path="/workspace/stable-diffusion/ldm/models/diffusion/clip/bw.jpg").cuda()
+image_encoder = CLIPEncoder(need_ref=True, ref_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "clip", "bw.jpg")).cuda() # changed from "/workspace/stable-diffusion/ldm/models/diffusion/clip/bw.jpg"
 
 
 class DDIMSampler(object):

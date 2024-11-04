@@ -177,20 +177,3 @@ pyrightconfig.json
 
 # your own
 
-# For Face-GD
-# part of sd's requirements used
-/FreeDoM/Face-GD/src/
-
-# experimented results
-/FreeDoM/Face-GD/exp/image_samples/
-
-# Diffusion Models
-/FreeDoM/Face-GD/exp/logs
-
-# pretrained models required for Dist(condition, X0|t), X0|t is the approximated intermediate result
-/FreeDoM/Face-GD/functions/face_parsing/79999_iter.pth
-/FreeDoM/Face-GD/functions/anime2sketch/netG.pth
-/FreeDoM/Face-GD/functions/arcface/model_ir_se50.pth
-/FreeDoM/Face-GD/functions/landmark/checkpoint/mobilefacenet_model_best.pth.tar
-/FreeDoM/Face-GD/functions/landmark/checkpoint/mobilenet_224_model_best_gdconv_external.pth.tar
-/FreeDoM/Face-GD/functions/landmark/Retinaface/weights/mobilenet0.25_Final.pth

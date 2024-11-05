@@ -17,6 +17,88 @@ def compute_alpha(beta, t):
     return a
 
 
+def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rho_scale=1.0, prompt=None, stop=100, domain="face", ref_path=None):
+    # Initialize the required tools based on the input list
+    clip_encoder, parser, img2sketch, img2landmark, idloss = None, None, None, None, None
+    
+    if 'clip' in conditions:
+        clip_encoder = CLIPEncoder().cuda()
+    if 'parse' in conditions:
+        parser = FaceParseTool(ref_path=ref_path).cuda()
+    if 'sketch' in conditions:
+        img2sketch = FaceSketchTool(ref_path=ref_path).cuda()
+    if 'landmark' in conditions:
+        img2landmark = FaceLandMarkTool(ref_path=ref_path).cuda()
+    if 'arc' in conditions:
+        idloss = IDLoss(ref_path=ref_path).cuda()
+
+    # setup iteration variables
+    n = x.size(0)
+    seq_next = [-1] + list(seq[:-1])
+    x0_preds = []
+    xs = [x]
+
+    # iterate over the timesteps
+    for i, j in tqdm(zip(reversed(seq), reversed(seq_next))):
+        t = (torch.ones(n) * i).to(x.device) # current timestep
+        next_t = (torch.ones(n) * j).to(x.device) # next timestep
+        at = compute_alpha(b, t.long())
+        at_next = compute_alpha(b, next_t.long())
+        xt = xs[-1].to('cuda')
+        conditional_norms = []
+
+        xt.requires_grad = True
+        
+        # s(xt, t), the predicted noise at time step t
+        et = model(xt, t)
+
+        if et.size(1) == 6:
+            et = et[:, :3]
+
+        # algo 2 formula for x0_t
+        x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt() 
+        
+        # Guided gradient for each condition
+        if clip_encoder:
+            residual = clip_encoder.get_residual(x0_t, prompt=None)
+            conditional_norms.append(torch.linalg.norm(residual)) # dist (c, x0_t)
+        elif parser:
+            residual = parser.get_residual(x0_t)
+            conditional_norms.append(torch.linalg.norm(residual)) # dist (c, x0_t)
+        elif img2sketch:
+            residual = img2sketch.get_residual(x0_t)
+            conditional_norms.append(torch.linalg.norm(residual)) # dist (c, x0_t)
+        elif img2landmark:
+            residual = img2landmark.get_residual(x0_t)
+            conditional_norms.append(torch.linalg.norm(residual)) # dist (c, x0_t)
+        elif idloss:
+            residual = idloss.get_residual(x0_t)
+            conditional_norms.append(torch.linalg.norm(residual))  # dist (c, x0_t)
+
+        weighted_norm = sum(conditional_norms) / len(conditional_norms) # dist (c_list, x0_t) --> ni = 1/N for dist (ci, x0|t)
+        norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (c_list, x0_t)
+
+        # algo 2 formula for xt-1 (clip is different from the other conditions for xt-1 (why?) --> using the others' seems to be working just as well, so we standardise)
+        eta = 0.5
+        c1 = (1 - at_next).sqrt() * eta
+        c2 = (1 - at_next).sqrt() * ((1 - eta ** 2) ** 0.5)
+        xt_next = at_next.sqrt() * x0_t + c1 * torch.randn_like(x0_t) + c2 * et
+
+        # formula for pt (rho) , the learning rate (clip is different from the other conditions for xt-1 (why?) --> using the others' seems to be working just as well, so we standardise)
+        rho = at.sqrt() * rho_scale
+        if not i <= stop:
+            xt_next -= rho * norm_grad
+            
+        x0_t = x0_t.detach()
+        xt_next = xt_next.detach()
+        
+        x0_preds.append(x0_t.to('cpu'))
+        xs.append(xt_next.to('cpu'))
+    
+    # return x0_preds, xs
+    return [xs[-1]], [x0_preds[-1]]
+    
+
 def clip_ddim_diffusion(x, seq, model, b, cls_fn=None, rho_scale=1.0, prompt=None, stop=100, domain="face"):
     clip_encoder = CLIPEncoder().cuda()
 
@@ -28,47 +110,61 @@ def clip_ddim_diffusion(x, seq, model, b, cls_fn=None, rho_scale=1.0, prompt=Non
 
     # iterate over the timesteps
     for i, j in tqdm(zip(reversed(seq), reversed(seq_next))):
-        t = (torch.ones(n) * i).to(x.device)
-        next_t = (torch.ones(n) * j).to(x.device)
+        t = (torch.ones(n) * i).to(x.device) # current timestep
+        next_t = (torch.ones(n) * j).to(x.device) # next timestep
         at = compute_alpha(b, t.long())
         at_next = compute_alpha(b, next_t.long())
         xt = xs[-1].to('cuda')
 
-        if domain == "face":
-            repeat = 1
-        elif domain == "imagenet":
-            if 800 >= i >= 500:
-                repeat = 10
-            else:
-                repeat = 1
+        if domain == "face": # no need for time travel strategy (for datasets with small number of classes without poor guidance)
+            repeat = 1 # do not do time strategy (-> only one iteration per denoising step)
+        elif domain == "imagenet": # need for time travel strategy (for datasets with large number of classes without poor guidance)
+            if 800 >= i >= 500: # sementic timestep range 800-500
+                repeat = 10 # 10 time steps for each sementic timestep (middle)
+            else: # non-sementic timestep ranges [chaotic (early: 1000 - 800) and refinement (late: 500 - 0)]
+                repeat = 1 # do not do time strategy (-> only one iteration per denoising step)
         
-        for idx in range(repeat):
+        for idx in range(repeat): # time-travel strategy (if repeat = 1 = no time travel, only 1 iteration per 1 denoising step)
         
             xt.requires_grad = True
             
-            et = model(xt, t)
+            et = model(xt, t) # s(xt, t), the predicted noise at time step t
 
             if et.size(1) == 6:
                 et = et[:, :3]
 
-            x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt()
+            # algo 2 formula for x0_t
+            x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt() 
             
             # get guided gradient
-            residual = clip_encoder.get_residual(x0_t, prompt)
-            norm = torch.linalg.norm(residual)
-            norm_grad = torch.autograd.grad(outputs=norm, inputs=xt)[0]
+            residual = clip_encoder.get_residual(x0_t, prompt) 
+            norm = torch.linalg.norm(residual) # dist (c, x0_t)
+            norm_grad = torch.autograd.grad(outputs=norm, inputs=xt)[0] # nabla dist (c, x0_t)
 
-            c1 = at_next.sqrt() * (1 - at / at_next) / (1 - at)
-            c2 = (at / at_next).sqrt() * (1 - at_next) / (1 - at)
-            c3 = (1 - at_next) * (1 - at / at_next) / (1 - at)
-            c3 = (c3.log() * 0.5).exp()
-            xt_next = c1 * x0_t + c2 * xt + c3 * torch.randn_like(x0_t)
+            # algo 2 formula for xt-1
+            # Modified Xt-1
+            eta = 0.5
+            c1 = (1 - at_next).sqrt() * eta
+            c2 = (1 - at_next).sqrt() * ((1 - eta ** 2) ** 0.5)
+            xt_next = at_next.sqrt() * x0_t + c1 * torch.randn_like(x0_t) + c2 * et
+
+            # c1 = at_next.sqrt() * (1 - at / at_next) / (1 - at)
+            # c2 = (at / at_next).sqrt() * (1 - at_next) / (1 - at)
+            # c3 = (1 - at_next) * (1 - at / at_next) / (1 - at)
+            # c3 = (c3.log() * 0.5).exp()
+            # xt_next = c1 * x0_t + c2 * xt + c3 * torch.randn_like(x0_t) 
             
-            l1 = ((et * et).mean().sqrt() * (1 - at).sqrt() / at.sqrt() * c1).item()
-            l2 = l1 * 0.02
-            rho = l2 / (norm_grad * norm_grad).mean().sqrt().item()
+            # formula for pt (rho) , the learning rate
+            # l1 = ((et * et).mean().sqrt() * (1 - at).sqrt() / at.sqrt() * c1).item()
+            # l2 = l1 * 0.02
+            # rho = l2 / (norm_grad * norm_grad).mean().sqrt().item()
+            # xt_next -= rho * norm_grad
+
+            # Modified pt
+            rho = at.sqrt() * rho_scale
+            if not i <= stop: # may remove
+                xt_next -= rho * norm_grad
             
-            xt_next -= rho * norm_grad
             
             x0_t = x0_t.detach()
             xt_next = xt_next.detach()

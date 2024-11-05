@@ -12,7 +12,7 @@ import torch.utils.data as data
 from models.diffusion import Model
 # from datasets import get_dataset, data_transform, inverse_data_transform
 from functions.ckpt_util import get_ckpt_path, download
-from functions.denoising import clip_ddim_diffusion, parse_ddim_diffusion, sketch_ddim_diffusion, landmark_ddim_diffusion, arcface_ddim_diffusion
+from functions.denoising import clip_ddim_diffusion, parse_ddim_diffusion, sketch_ddim_diffusion, landmark_ddim_diffusion, arcface_ddim_diffusion, multi_condition_ddim_diffusion
 import torchvision.utils as tvu
 
 from guided_diffusion.unet import UNetModel
@@ -90,6 +90,118 @@ class Diffusion(object):
         elif self.model_var_type == "fixedsmall":
             self.logvar = posterior_variance.clamp(min=1e-20).log()
 
+    # MINE
+        # ###############################################################################################################################################################################################################
+    def sample_multi_conditions(self, conditions): # same as sample
+        args = self.args
+        cls_fn = None
+        model_f = None
+        model_i = None
+
+        if self.args.model_type == "face":
+            # get face model
+            celeba_dict = {
+                'type': "simple",
+                'in_channels': 3,
+                'out_ch': 3,
+                'ch': 128,
+                'ch_mult': [1, 1, 2, 2, 4, 4],
+                'num_res_blocks': 2,
+                'attn_resolutions': [16, ],
+                'dropout': 0.0,
+                'var_type': 'fixedsmall',
+                'ema_rate': 0.999,
+                'ema': True,
+                'resamp_with_conv': True,
+                "image_size": 256, 
+                "resamp_with_conv": True,
+                "num_diffusion_timesteps": 1000,
+            }
+            model_f = Model(celeba_dict)
+            ckpt = os.path.join(self.args.exp, "logs/celeba/celeba_hq.ckpt")
+            states = torch.load(ckpt, map_location=self.device)
+            if type(states) == list:
+                states_old = states[0]
+                states = dict()
+                for k, v in states.items():
+                    states[k[7:]] = v
+            else:
+                model_f.load_state_dict(states)
+            model_f.to(self.device)
+            model_f = torch.nn.DataParallel(model_f)
+            model = model_f
+
+        elif self.args.model_type == "imagenet":
+            # get imagenet model
+            imagenet_dict = {
+                'type': 'openai', 
+                'in_channels': 3, 
+                'out_channels': 3, 
+                'num_channels': 256, 
+                'num_heads': 4, 
+                'num_res_blocks': 2, 
+                'attention_resolutions': '32,16,8', 
+                'dropout': 0.0, 
+                'resamp_with_conv': True, 
+                'learn_sigma': True, 
+                'use_scale_shift_norm': True, 
+                'use_fp16': True, 
+                'resblock_updown': True, 
+                'num_heads_upsample': -1, 
+                'var_type': 'fixedsmall', 
+                'num_head_channels': 64, 
+                'image_size': 256, 
+                'class_cond': False, 
+                'use_new_attention_order': False
+                }
+            model_i = create_model(**imagenet_dict)
+            model_i.convert_to_fp16()
+            ckpt =  Path().cwd() / "exp" / "logs" / "imagenet" / "256x256_diffusion_uncond.pt" # changed from os.path.join(self.args.exp, "logs/imagenet/256x256_diffusion_uncond.pt")
+            model_i.load_state_dict(torch.load(ckpt, map_location=self.device))
+            model_i.to(self.device)
+            model_i.eval()
+            model_i = torch.nn.DataParallel(model_i)
+            model = model_i
+
+        # for number of specified number of image to generate
+        pbar = tqdm.tqdm(range(1, self.args.batch_size+1))
+
+        for index in pbar: # specified number of images to be generated
+
+            x = torch.randn(
+                1,
+                3,
+                256,
+                256,
+                device=self.device,
+            )
+
+            # NOTE: This means that we are producing each predicted x0, not x_{t-1} at timestep t.
+            x, _ = self.sample_image_multi_conditions_ddim(x, model, last=False, cls_fn=cls_fn, rho_scale=args.rho_scale, prompt=args.prompt, stop=args.stop, domain=args.model_type, ref_path=args.ref_path, conditions=conditions)
+            x = [((y + 1.0) / 2.0).clamp(0.0, 1.0) for y in x] # scales each pixel value in x from [-1, 1] to [0, 1] using the transformation 
+
+            # for i in [-1]:  # range(len(x)):
+            for i in range(len(x)):
+                for j in range(x[i].size(0)):
+                    tvu.save_image(
+                        x[i][j], os.path.join(self.args.image_folder, f"{index + j}_{i}.png")
+                    )
+
+
+    def sample_image_multi_conditions_ddim(self, x, model, conditions, last=True, cls_fn=None, rho_scale=1.0, prompt=None, stop=100, domain="face", ref_path=None):
+        skip = self.num_timesteps // self.args.timesteps
+        seq = range(0, self.num_timesteps, skip)
+        
+        x.requires_grad = True
+        
+        x = multi_condition_ddim_diffusion(x, seq, model, self.betas, cls_fn=cls_fn, rho_scale=rho_scale, prompt=prompt, stop=stop, domain=domain, ref_path=ref_path, conditions=conditions)
+
+        if last:
+            x = x[0][-1]
+        return x
+    # ###############################################################################################################################################################################################################
+
+
     def sample(self, mode):
         cls_fn = None
         model_f = None
@@ -166,7 +278,7 @@ class Diffusion(object):
         args = self.args
         pbar = tqdm.tqdm(range(1, self.args.batch_size+1))
 
-        for index in pbar:
+        for index in pbar: # specified number of images to be generated
 
             x = torch.randn(
                 1,
@@ -188,7 +300,7 @@ class Diffusion(object):
             elif mode == "arc_ddim":
                 x, _ = self.sample_image_alogrithm_arcface_ddim(x, model, last=False, cls_fn=cls_fn, rho_scale=args.rho_scale, stop=args.stop, ref_path=args.ref_path)
 
-            x = [((y + 1.0) / 2.0).clamp(0.0, 1.0) for y in x]
+            x = [((y + 1.0) / 2.0).clamp(0.0, 1.0) for y in x] # scales each pixel value in x from [-1, 1] to [0, 1] using the transformation 
 
             # for i in [-1]:  # range(len(x)):
             for i in range(len(x)):

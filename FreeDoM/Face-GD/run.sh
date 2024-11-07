@@ -7,3 +7,11 @@ python main.py -i arcface_face -s arc_ddim --doc celeba_hq --timesteps 100 --rho
 
 # imagenet
 python main.py -i clip_imagenet -s clip_ddim --doc imagenet --timesteps 100 --seed 1234 --model_type "imagenet" --prompt "orange" --batch_size 1
+
+
+# mine
+python main2.py -i multi_cond -s clip_ddim --doc celeba_hq --timesteps 100 --rho_scale 0.2 --seed 1234 --stop 200 --ref_path ./images/294.jpg --batch_size 1 --prompt "bald man"
+python main2.py -i multi_cond -s parse_ddim --doc celeba_hq --timesteps 100 --rho_scale 0.2 --seed 1234 --stop 200 --ref_path ./images/294.jpg --batch_size 1 --prompt "bald man"
+python main2.py -i multi_cond -s sketch_ddim --doc celeba_hq --timesteps 100 --rho_scale 20 --seed 1234 --stop 100 --ref_path ./images/294.jpg --batch_size 1 --prompt "bald man"
+python main2.py -i multi_cond -s land_ddim --doc celeba_hq --timesteps 100 --rho_scale 500 --seed 1234 --stop 200 --ref_path ./images/294.jpg --batch_size 1 --prompt "bald man"
+python main2.py -i multi_cond -s arc_ddim --doc celeba_hq --timesteps 100 --rho_scale 100 --seed 1234 --stop 100 --ref_path ./images/294.jpg --batch_size 1 --prompt "bald man"

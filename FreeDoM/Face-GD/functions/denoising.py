@@ -22,14 +22,19 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
     clip_encoder, parser, img2sketch, img2landmark, idloss = None, None, None, None, None
     
     if 'clip' in conditions:
+        print("creating clip encoder")
         clip_encoder = CLIPEncoder().cuda()
     if 'parse' in conditions:
+        print("creating parse tool")
         parser = FaceParseTool(ref_path=ref_path).cuda()
     if 'sketch' in conditions:
+        print("creating sketch tool")
         img2sketch = FaceSketchTool(ref_path=ref_path).cuda()
     if 'landmark' in conditions:
+        print("creating landmark tool")
         img2landmark = FaceLandMarkTool(ref_path=ref_path).cuda()
     if 'arc' in conditions:
+        print("creating arc tool")
         idloss = IDLoss(ref_path=ref_path).cuda()
 
     # setup iteration variables
@@ -45,7 +50,7 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         at = compute_alpha(b, t.long())
         at_next = compute_alpha(b, next_t.long())
         xt = xs[-1].to('cuda')
-        conditional_norms = []
+        conditional_norms = {}
 
         xt.requires_grad = True
         
@@ -60,34 +65,55 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         
         # Guided gradient for each condition
         if clip_encoder:
-            residual = clip_encoder.get_residual(x0_t, prompt=None)
-            conditional_norms.append(torch.linalg.norm(residual)) # dist (c, x0_t)
-        elif parser:
+            residual = clip_encoder.get_residual(x0_t, prompt)
+            conditional_norms["clip"] = (torch.linalg.norm(residual), 1000)  # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+        if parser:
             residual = parser.get_residual(x0_t)
-            conditional_norms.append(torch.linalg.norm(residual)) # dist (c, x0_t)
-        elif img2sketch:
+            pt = 1
+            if i <= 200:
+                pt = 0
+            conditional_norms["parse"] = (torch.linalg.norm(residual), pt) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+        if img2sketch:
             residual = img2sketch.get_residual(x0_t)
-            conditional_norms.append(torch.linalg.norm(residual)) # dist (c, x0_t)
-        elif img2landmark:
+            conditional_norms["sketch"] = (torch.linalg.norm(residual), 1) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+        if img2landmark:
             residual = img2landmark.get_residual(x0_t)
-            conditional_norms.append(torch.linalg.norm(residual)) # dist (c, x0_t)
-        elif idloss:
+            conditional_norms["landmark"] = (torch.linalg.norm(residual), 1) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+        if idloss:
             residual = idloss.get_residual(x0_t)
-            conditional_norms.append(torch.linalg.norm(residual))  # dist (c, x0_t)
+            conditional_norms["arc"] = (torch.linalg.norm(residual), 1)  # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
 
-        weighted_norm = sum(conditional_norms) / len(conditional_norms) # dist (c_list, x0_t) --> ni = 1/N for dist (ci, x0|t)
-        norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (c_list, x0_t)
+        # multi conditional energy function approximation
+        weighted_norm = sum([value[0]*value[1] for key, value in conditional_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
+        norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
 
-        # algo 2 formula for xt-1 (clip is different from the other conditions for xt-1 (why?) --> using the others' seems to be working just as well, so we standardise)
-        eta = 0.5
-        c1 = (1 - at_next).sqrt() * eta
-        c2 = (1 - at_next).sqrt() * ((1 - eta ** 2) ** 0.5)
-        xt_next = at_next.sqrt() * x0_t + c1 * torch.randn_like(x0_t) + c2 * et
+        print(f"conditional_norms[clip] = {conditional_norms['clip'][0]*conditional_norms['clip'][1]}")
+        print(f"conditional_norms[parse] = {conditional_norms['parse'][0]*conditional_norms['parse'][1]}")
 
-        # formula for pt (rho) , the learning rate (clip is different from the other conditions for xt-1 (why?) --> using the others' seems to be working just as well, so we standardise)
-        rho = at.sqrt() * rho_scale
-        if not i <= stop:
-            xt_next -= rho * norm_grad
+
+
+        # algo 2 formula for xt-1 (clip is different from the other conditions for xt-1 (why?) --> using the others' NOT working, so we standardise)
+        # eta = 0.5
+        # c1 = (1 - at_next).sqrt() * eta
+        # c2 = (1 - at_next).sqrt() * ((1 - eta ** 2) ** 0.5)
+        # xt_next = at_next.sqrt() * x0_t + c1 * torch.randn_like(x0_t) + c2 * et
+
+        c1 = at_next.sqrt() * (1 - at / at_next) / (1 - at)
+        c2 = (at / at_next).sqrt() * (1 - at_next) / (1 - at)
+        c3 = (1 - at_next) * (1 - at / at_next) / (1 - at)
+        c3 = (c3.log() * 0.5).exp()
+        xt_next = c1 * x0_t + c2 * xt + c3 * torch.randn_like(x0_t) 
+            
+
+        # # formula for pt (rho) , the learning rate (clip is different from the other conditions for xt-1 (why?) --> using the others' NOT working, so we standardise)
+        # rho = at.sqrt() * rho_scale
+        # if not i <= stop:
+        #   xt_next -= rho * norm_grad
+
+        l1 = ((et * et).mean().sqrt() * (1 - at).sqrt() / at.sqrt() * c1).item()
+        l2 = l1 * 0.02
+        rho = l2 / (norm_grad * norm_grad).mean().sqrt().item()
+        xt_next -= rho * norm_grad
             
         x0_t = x0_t.detach()
         xt_next = xt_next.detach()
@@ -141,29 +167,29 @@ def clip_ddim_diffusion(x, seq, model, b, cls_fn=None, rho_scale=1.0, prompt=Non
             norm = torch.linalg.norm(residual) # dist (c, x0_t)
             norm_grad = torch.autograd.grad(outputs=norm, inputs=xt)[0] # nabla dist (c, x0_t)
 
-            # algo 2 formula for xt-1
-            # Modified Xt-1
-            eta = 0.5
-            c1 = (1 - at_next).sqrt() * eta
-            c2 = (1 - at_next).sqrt() * ((1 - eta ** 2) ** 0.5)
-            xt_next = at_next.sqrt() * x0_t + c1 * torch.randn_like(x0_t) + c2 * et
+            # # algo 2 formula for xt-1
+            # # Modified Xt-1
+            # eta = 0.5
+            # c1 = (1 - at_next).sqrt() * eta
+            # c2 = (1 - at_next).sqrt() * ((1 - eta ** 2) ** 0.5)
+            # xt_next = at_next.sqrt() * x0_t + c1 * torch.randn_like(x0_t) + c2 * et
 
-            # c1 = at_next.sqrt() * (1 - at / at_next) / (1 - at)
-            # c2 = (at / at_next).sqrt() * (1 - at_next) / (1 - at)
-            # c3 = (1 - at_next) * (1 - at / at_next) / (1 - at)
-            # c3 = (c3.log() * 0.5).exp()
-            # xt_next = c1 * x0_t + c2 * xt + c3 * torch.randn_like(x0_t) 
+            c1 = at_next.sqrt() * (1 - at / at_next) / (1 - at)
+            c2 = (at / at_next).sqrt() * (1 - at_next) / (1 - at)
+            c3 = (1 - at_next) * (1 - at / at_next) / (1 - at)
+            c3 = (c3.log() * 0.5).exp()
+            xt_next = c1 * x0_t + c2 * xt + c3 * torch.randn_like(x0_t) 
             
             # formula for pt (rho) , the learning rate
-            # l1 = ((et * et).mean().sqrt() * (1 - at).sqrt() / at.sqrt() * c1).item()
-            # l2 = l1 * 0.02
-            # rho = l2 / (norm_grad * norm_grad).mean().sqrt().item()
-            # xt_next -= rho * norm_grad
+            l1 = ((et * et).mean().sqrt() * (1 - at).sqrt() / at.sqrt() * c1).item()
+            l2 = l1 * 0.02
+            rho = l2 / (norm_grad * norm_grad).mean().sqrt().item()
+            xt_next -= rho * norm_grad
 
-            # Modified pt
-            rho = at.sqrt() * rho_scale
-            if not i <= stop: # may remove
-                xt_next -= rho * norm_grad
+            # # Modified pt
+            # rho = at.sqrt() * rho_scale
+            # if not i <= stop: 
+            #     xt_next -= rho * norm_grad
             
             
             x0_t = x0_t.detach()

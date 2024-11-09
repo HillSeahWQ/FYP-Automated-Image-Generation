@@ -66,16 +66,16 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         # Guided gradient for each condition
         if clip_encoder:
             residual = clip_encoder.get_residual(x0_t, prompt)
-            conditional_norms["clip"] = (torch.linalg.norm(residual), 10)  # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+            conditional_norms["clip"] = (torch.linalg.norm(residual), 1)  # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
         if parser:
             residual = parser.get_residual(x0_t)
-            wf = 1
-            if i <= 200:
-                wf = 0
-            conditional_norms["parse"] = (torch.linalg.norm(residual), wf) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+            # wf = 1/1000
+            # if i <= 200:
+            #     wf = 0
+            conditional_norms["parse"] = (torch.linalg.norm(residual), 1/1000) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
         if img2sketch:
             residual = img2sketch.get_residual(x0_t)
-            conditional_norms["sketch"] = (torch.linalg.norm(residual), 1) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+            conditional_norms["sketch"] = (torch.linalg.norm(residual), 1/10) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
         if img2landmark:
             residual = img2landmark.get_residual(x0_t)
             conditional_norms["landmark"] = (torch.linalg.norm(residual), 1) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor

@@ -40,3 +40,14 @@ Models
 6. ArcFace model
 - place the model in this directory ./functions/arcface/model_ir_se50.pth
     - https://onedrive.live.com/?authkey=%21AOw5TZL8cWlj10I&cid=CEC0E1F8F0542A13&id=CEC0E1F8F0542A13%21835&parId=root&action=locate     (https://github.com/paul-pias/Face-Recognition?tab=readme-ov-file)
+
+
+
+Troubleshooting:
+
+1. Repeated CondaError: Run 'conda init' before 'conda activate' for 'conda activate ldm' despite already 'conda init'
+
+Open powershell as administrator and run: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Run: & C:/ProgramData/miniconda3/shell/condabin/conda-hook.ps1
+Run: conda activate ldm
+

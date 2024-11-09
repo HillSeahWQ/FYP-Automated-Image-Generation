@@ -66,13 +66,13 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         # Guided gradient for each condition
         if clip_encoder:
             residual = clip_encoder.get_residual(x0_t, prompt)
-            conditional_norms["clip"] = (torch.linalg.norm(residual), 1000)  # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+            conditional_norms["clip"] = (torch.linalg.norm(residual), 1)  # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
         if parser:
             residual = parser.get_residual(x0_t)
-            pt = 1
+            wf = 1
             if i <= 200:
-                pt = 0
-            conditional_norms["parse"] = (torch.linalg.norm(residual), pt) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+                wf = 0
+            conditional_norms["parse"] = (torch.linalg.norm(residual), wf) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
         if img2sketch:
             residual = img2sketch.get_residual(x0_t)
             conditional_norms["sketch"] = (torch.linalg.norm(residual), 1) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
@@ -87,8 +87,8 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         weighted_norm = sum([value[0]*value[1] for key, value in conditional_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
         norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
 
-        print(f"conditional_norms[clip] = {conditional_norms['clip'][0]*conditional_norms['clip'][1]}")
-        print(f"conditional_norms[parse] = {conditional_norms['parse'][0]*conditional_norms['parse'][1]}")
+        for key in conditional_norms.keys():
+            print(f"conditional_norms[{key}] = {conditional_norms[key][0]*conditional_norms[key][1]}")
 
 
 

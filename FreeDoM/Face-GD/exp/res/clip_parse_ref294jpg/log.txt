@@ -1,2 +1,2 @@
-1-18: (Nc : Np = 1000 : 1, Nc = 1000 and Np = 1 or Nc = 1 and Np = 1/1000)
+1-18: (Nc : Np = 1000 : 1, Nc = 1 and Np = 1/1000 or Nc = 1000 and Np = 1)
 python main2.py -i multi_cond -s clip_ddim --doc celeba_hq --timesteps 100 --rho_scale 0.2 --seed 12 --stop 200 --ref_path ./images/294.jpg --batch_size 20 --prompt "black woman"  

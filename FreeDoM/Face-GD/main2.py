@@ -169,7 +169,7 @@ def main_multi_conditions():
     logging.info("Exp instance id = {}".format(os.getpid()))
     logging.info("Exp comment = {}".format(args.comment))
 
-    conditions = ["clip", "landmark"]
+    conditions = ["clip", "sketch"]
     print(f"main_multi_conditions(): conditions = {conditions}")
 
     try:

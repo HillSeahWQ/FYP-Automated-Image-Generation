@@ -149,6 +149,45 @@ class FaceSketchTool(nn.Module):
         sketch_ref = self.net(image_y)
         
         return sketch_ref - sketch_image
+    
+    def save_sketch(self, reference_img_path, output_path):
+        from PIL import Image
+        import numpy as np
+
+        # preprocessing
+        img = Image.open(reference_img_path)
+        image = img.resize((256, 256), Image.BILINEAR)
+        img = self.to_tensor(image)
+        img = img * 2 - 1
+        img = torch.unsqueeze(img, 0)
+        img = img.cuda()
+
+        # Forward pass through the network to get the output (sketch)
+        with torch.no_grad():  # Disable gradient computation
+            output = self.net(img)  # Assuming the model outputs a tensor
+
+        # Convert the output tensor back to a PIL image
+        output = output.squeeze(0)  # Remove batch dimension
+        output = output.cpu().clamp(-1, 1)  # Ensure values are in [-1, 1]
+        
+        # Convert to [0, 1] range for saving as image
+        output = (output + 1) / 2  # Rescale to [0, 1]
+        
+        # If it's a color image (3 channels), make sure it's in HWC format
+        output = output.permute(1, 2, 0).numpy()  # Convert to HWC format (height, width, channels)
+        
+        # Ensure the pixel values are in [0, 255] and convert to uint8
+        output = (output * 255).astype(np.uint8)
+
+        # Handle case if output is grayscale (single channel)
+        if output.shape[2] == 1:  # Single channel, grayscale image
+            output = output.squeeze(axis=-1)  # Remove channel dimension for grayscale
+
+        # Save the image
+        output_image = Image.fromarray(output)  # This should work now
+        output_image.save(output_path)
+        print(f"Saved sketch image to {output_path}")
+
         
 
 

@@ -87,8 +87,8 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         weighted_norm = sum([value[0]*value[1] for key, value in conditional_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
         norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
 
-        for key in conditional_norms.keys():
-            print(f"conditional_norms[{key}] = {conditional_norms[key][0]*conditional_norms[key][1]}")
+        # for key in conditional_norms.keys():
+        #     print(f"conditional_norms[{key}] = {conditional_norms[key][0]*conditional_norms[key][1]}")
 
 
 

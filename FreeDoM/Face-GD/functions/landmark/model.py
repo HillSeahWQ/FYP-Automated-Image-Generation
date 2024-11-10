@@ -20,6 +20,7 @@ class FaceLandMarkTool(nn.Module):
         self.landmark_net = self.landmark_net.eval()
         
         self.ref_path = "/workspace/ddgm/functions/landmark/3650.png" if not ref_path else ref_path
+        print(self.ref_path)
         img = cv2.imread(self.ref_path)
         img = cv2.resize(img, (256, 256))
 
@@ -66,7 +67,31 @@ class FaceLandMarkTool(nn.Module):
         image = torch.nn.functional.interpolate(image, size=self.out_size, mode='bicubic')
         landmark_img = self.landmark_net(image)[0]
         return self.landmark_ref - landmark_img
+    
+    
+    def save_landmarks(self, output_path):
+        # Convert the tensor to numpy for processing
+        landmarks = self.landmark_ref.cpu().detach().numpy()
         
+        # Reshape the landmarks to (68, 2) format for easier plotting
+        landmarks = landmarks.reshape(-1, 2)  # 68 points, each with (x, y)
+
+        # Load the reference image again to overlay the landmarks
+        img = cv2.imread(self.ref_path)
+        img = cv2.resize(img, (256, 256))
+
+        # Overlay the landmarks on the image
+        for (x, y) in landmarks:
+            # Convert (x, y) to integers
+            x, y = int(x * (self.right - self.left) / self.out_size + self.left), \
+                   int(y * (self.bottom - self.top) / self.out_size + self.top)
+
+            # Draw a circle at each landmark
+            cv2.circle(img, (x, y), 2, (0, 255, 0), -1)  # Green circle for landmarks
+
+        # Save the image with landmarks overlaid
+        cv2.imwrite(output_path, img)
+        print(f"Saved image with landmarks to {output_path}")
         
         
         

@@ -6,6 +6,8 @@ import torch
 import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
+import PIL
+import numpy as np
 
 from .resnet import Resnet18
 
@@ -287,15 +289,15 @@ class FaceParseTool(nn.Module):
         
 #         self.reference_img_path = "/userhome/yjw/ddgm_exp/functions/face_parsing/00234.png" 
         self.reference_img_path = "/workspace/ddgm/functions/face_parsing/43.jpg" if not ref_path else ref_path
-        from PIL import Image
-        img = Image.open(self.reference_img_path)
-        image = img.resize((512, 512), Image.BILINEAR)
+        img = PIL.Image.open(self.reference_img_path)
+        # preprocess for ref image
+        image = img.resize((512, 512), PIL.Image.BILINEAR)
         img = self.to_tensor(image)
         img = torch.unsqueeze(img, 0)
         img = img.cuda()
         self.ref = img
         
-        self.preprocess = torchvision.transforms.Normalize(
+        self.preprocess = torchvision.transforms.Normalize( # preprocessing for x0|t
             (0.485*2-1, 0.456*2-1, 0.406*2-1), 
             (0.229*2, 0.224*2, 0.225*2)
         )
@@ -337,6 +339,28 @@ class FaceParseTool(nn.Module):
         img_mask = img_mask.reshape(1, 1, 512, 512).float()
         img_mask = torch.nn.functional.interpolate(img_mask, size=256, mode='bicubic')
         return img_mask.cuda().detach()
+    
+    def save_segmentation_map(self, input_image_path, output_image_path):
+        # Load and preprocess the input image
+        img = PIL.Image.open(input_image_path).resize((512, 512), PIL.Image.BILINEAR)
+        img_tensor = self.to_tensor(img).unsqueeze(0).cuda()
+        
+        # Perform inference to get the segmentation map
+        with torch.no_grad():
+            output = self.net(img_tensor)[0]
+        
+        # Get the segmentation map as a numpy array
+        segmentation_map = output.squeeze().cpu().numpy().argmax(0)
+        
+        # Convert the segmentation map to a color image for better visualization
+        colormap = np.zeros((segmentation_map.shape[0], segmentation_map.shape[1], 3), dtype=np.uint8)
+        for label in range(self.n_classes):
+            colormap[segmentation_map == label] = [label * 10 % 256, label * 20 % 256, label * 30 % 256]  # Customize colors
+        
+        # Save the image
+        seg_image = PIL.Image.fromarray(colormap)
+        seg_image.save(output_image_path)
+        print(f"Segmentation map saved to {output_image_path}")
         
         
         

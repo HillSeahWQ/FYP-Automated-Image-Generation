@@ -4,6 +4,7 @@
 
 # experimented results
 /exp/image_samples/
+/exp/conditions/
 
 # Diffusion Models
 /exp/logs/celeba/celeba_hq.ckpt

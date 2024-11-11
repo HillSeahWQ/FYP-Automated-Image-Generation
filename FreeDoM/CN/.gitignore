@@ -1,6 +1,0 @@
-/models/control_sd15_openpose.pth
-/models/control_sd15_scribble.pth
-/cldm/arcface/model_ir_se50.pth
-
-/annotator/ckpts/body_pose_model.pth
-/annotator/ckpts/hand_pose_model.pth

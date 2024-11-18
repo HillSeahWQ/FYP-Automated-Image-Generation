@@ -169,7 +169,11 @@ def main_multi_conditions():
     logging.info("Exp instance id = {}".format(os.getpid()))
     logging.info("Exp comment = {}".format(args.comment))
 
-    conditions = ["clip", "parse"]
+    conditions = {
+        # "clip": None,
+        "parse": "./images/294.jpg",
+        "arc": "./images/mo.jpg"
+    }
     print(f"main_multi_conditions(): conditions = {conditions}")
 
     try:

@@ -21,21 +21,23 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
     # Initialize the required tools based on the input list
     clip_encoder, parser, img2sketch, img2landmark, idloss = None, None, None, None, None
     
-    if 'clip' in conditions:
+    condition_names = list(conditions.keys())
+
+    if 'clip' in condition_names:
         print("creating clip encoder")
         clip_encoder = CLIPEncoder().cuda()
-    if 'parse' in conditions:
-        print("creating parse tool")
-        parser = FaceParseTool(ref_path=ref_path).cuda()
-    if 'sketch' in conditions:
-        print("creating sketch tool")
-        img2sketch = FaceSketchTool(ref_path=ref_path).cuda()
-    if 'landmark' in conditions:
-        print("creating landmark tool")
-        img2landmark = FaceLandMarkTool(ref_path=ref_path).cuda()
-    if 'arc' in conditions:
-        print("creating arc tool")
-        idloss = IDLoss(ref_path=ref_path).cuda()
+    if 'parse' in condition_names:
+        print(f"creating parse tool, ref_path = {conditions['parse']}")
+        parser = FaceParseTool(ref_path=conditions['parse']).cuda()
+    if 'sketch' in condition_names:
+        print(f"creating sketch tool, ref_path = {conditions['sketch']}")
+        img2sketch = FaceSketchTool(ref_path=conditions['sketch']).cuda()
+    if 'landmark' in condition_names:
+        print(f"creating landmark tool, ref_path = {conditions['landmark']}")
+        img2landmark = FaceLandMarkTool(ref_path=conditions['landmark']).cuda()
+    if 'arc' in condition_names:
+        print(f"creating arc tool, ref_path = {conditions['arc']}")
+        idloss = IDLoss(ref_path=conditions['arc']).cuda()
 
     # setup iteration variables
     n = x.size(0)
@@ -87,8 +89,8 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         weighted_norm = sum([value[0]*value[1] for key, value in conditional_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
         norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
 
-        # for key in conditional_norms.keys():
-        #     print(f"conditional_norms[{key}] = {conditional_norms[key][0]*conditional_norms[key][1]}")
+        for key in conditional_norms.keys():
+            print(f"conditional_norms[{key}] = {conditional_norms[key][0]*conditional_norms[key][1]}")
 
 
 

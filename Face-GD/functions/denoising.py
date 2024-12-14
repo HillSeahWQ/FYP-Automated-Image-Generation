@@ -67,7 +67,7 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         
         # Guided gradient for each condition
         if clip_encoder:
-            residual = clip_encoder.get_residual(x0_t, prompt)
+            residual = clip_encoder.get_residual(x0_t, conditions['clip'])#residual = clip_encoder.get_residual(x0_t, prompt)
             conditional_norms["clip"] = (torch.linalg.norm(residual), 1)  # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
         if parser:
             residual = parser.get_residual(x0_t)

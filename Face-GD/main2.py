@@ -170,9 +170,10 @@ def main_multi_conditions():
     logging.info("Exp comment = {}".format(args.comment))
 
     conditions = {
-        # "clip": None,
-        "parse": "./images/294.jpg",
-        "arc": "./images/mo.jpg"
+        "clip": "black woman",
+        # "parse": "./images/294.jpg",
+        # "arc": "./images/mo.jpg"
+        "landmark": "./images/2334.jpg"
     }
     print(f"main_multi_conditions(): conditions = {conditions}")
 

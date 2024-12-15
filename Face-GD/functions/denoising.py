@@ -66,31 +66,41 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt() 
         
         # Guided gradient for each condition
+        # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
         if clip_encoder:
-            residual = clip_encoder.get_residual(x0_t, conditions['clip'])#residual = clip_encoder.get_residual(x0_t, prompt)
-            conditional_norms["clip"] = (torch.linalg.norm(residual), 1)  # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+            residual = clip_encoder.get_residual(x0_t, conditions['clip']) # residual = clip_encoder.get_residual(x0_t, prompt)
+            conditional_norms["clip"] = (torch.linalg.norm(residual), 1) 
         if parser:
             residual = parser.get_residual(x0_t)
             # wf = 1/1000
             # if i <= 200:
             #     wf = 0
-            conditional_norms["parse"] = (torch.linalg.norm(residual), 1/1000) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+            conditional_norms["parse"] = (torch.linalg.norm(residual), 1/1000) 
         if img2sketch:
             residual = img2sketch.get_residual(x0_t)
-            conditional_norms["sketch"] = (torch.linalg.norm(residual), 1/10) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+            conditional_norms["sketch"] = (torch.linalg.norm(residual), 1/10)
         if img2landmark:
             residual = img2landmark.get_residual(x0_t)
-            conditional_norms["landmark"] = (torch.linalg.norm(residual), 1) # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+            conditional_norms["landmark"] = (torch.linalg.norm(residual), 1)
         if idloss:
             residual = idloss.get_residual(x0_t)
-            conditional_norms["arc"] = (torch.linalg.norm(residual), 1)  # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
+            conditional_norms["arc"] = (torch.linalg.norm(residual), 1)
 
         # multi conditional energy function approximation
+        #TODO: How to find the perfect weight (so far, only tested empirical weight adjustment)
+
+        # empirical weight adjustment
         weighted_norm = sum([value[0]*value[1] for key, value in conditional_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
         norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
-
         for key in conditional_norms.keys():
             print(f"conditional_norms[{key}] = {conditional_norms[key][0]*conditional_norms[key][1]}")
+
+        # # distance based normalisation (not working well despite comparabale ratio to empircal)
+        # distance_sums = sum([value[0] for key, value in conditional_norms.items()])
+        # weighted_norm = sum([value[0]*(value[0]/distance_sums) for key, value in conditional_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
+        # norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
+        # for key in conditional_norms.keys():
+        #     print(f"conditional_norms[{key}] = {conditional_norms[key][0]*conditional_norms[key][0]/distance_sums}")
 
 
 

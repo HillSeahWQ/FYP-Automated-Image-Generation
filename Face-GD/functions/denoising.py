@@ -3,6 +3,7 @@ from tqdm import tqdm
 import torchvision.utils as tvu
 import torchvision
 import os
+from itertools import combinations
 
 from .clip.base_clip import CLIPEncoder
 from .face_parsing.model import FaceParseTool
@@ -19,6 +20,7 @@ def compute_alpha(beta, t):
 
 def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rho_scale=1.0, prompt=None, stop=100, domain="face", ref_path=None):
     # Initialize the required tools based on the input list
+    conditions_similarities_weights_map = {"clipXparse": 1}
     clip_encoder, parser, img2sketch, img2landmark, idloss = None, None, None, None, None
     
     condition_names = list(conditions.keys())
@@ -52,7 +54,8 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         at = compute_alpha(b, t.long())
         at_next = compute_alpha(b, next_t.long())
         xt = xs[-1].to('cuda')
-        conditional_norms = {}
+        conditions_norms = {}
+        conditions_similarities = {}
 
         xt.requires_grad = True
         
@@ -69,38 +72,52 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         # key = condition, value = (dist (Ci, X0_t), ni), where ni is the weighing factor
         if clip_encoder:
             residual = clip_encoder.get_residual(x0_t, conditions['clip']) # residual = clip_encoder.get_residual(x0_t, prompt)
-            conditional_norms["clip"] = (torch.linalg.norm(residual), 1) 
+            conditions_norms["clip"] = (torch.linalg.norm(residual), 1)
+            conditions_similarities["clip"] = clip_encoder.get_gaussian_kernal(image=x0_t, text=conditions['clip'], sigma=0.5)
         if parser:
             residual = parser.get_residual(x0_t)
             # wf = 1/1000
             # if i <= 200:
             #     wf = 0
-            conditional_norms["parse"] = (torch.linalg.norm(residual), 1/1000) 
+            conditions_norms["parse"] = (torch.linalg.norm(residual), 1/1000)
+            conditions_similarities["parse"] = parser.get_gaussian_kernal(image=x0_t, sigma=0.5)
         if img2sketch:
             residual = img2sketch.get_residual(x0_t)
-            conditional_norms["sketch"] = (torch.linalg.norm(residual), 1/10)
+            conditions_norms["sketch"] = (torch.linalg.norm(residual), 1/10)
         if img2landmark:
             residual = img2landmark.get_residual(x0_t)
-            conditional_norms["landmark"] = (torch.linalg.norm(residual), 1)
+            conditions_norms["landmark"] = (torch.linalg.norm(residual), 1)
         if idloss:
             residual = idloss.get_residual(x0_t)
-            conditional_norms["arc"] = (torch.linalg.norm(residual), 1)
+            conditions_norms["arc"] = (torch.linalg.norm(residual), 1)
 
         # multi conditional energy function approximation
         #TODO: How to find the perfect weight (so far, only tested empirical weight adjustment)
 
-        # empirical weight adjustment
-        weighted_norm = sum([value[0]*value[1] for key, value in conditional_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
-        norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
-        for key in conditional_norms.keys():
-            print(f"conditional_norms[{key}] = {conditional_norms[key][0]*conditional_norms[key][1]}")
+        # empirical weight adjustment for norms and interaction terms
+        weighted_norm = sum([value[0]*value[1] for key, value in conditions_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
+        interactions = [(f"{key1}X{key2}", value1 * value2) for (key1, value1), (key2, value2) in combinations(conditions_similarities.items(), 2)] # list of tuples("CiXCj", K(x0|t, Ci) * K(x0|t, Cj))
+        weighted_interactions = sum([conditions_similarities_weights_map[t[0]]*t[1] for t in interactions])
+        multi_cond_ef = weighted_norm + weighted_interactions
+
+        norm_grad = torch.autograd.grad(outputs=multi_cond_ef, inputs=xt)[0] # nabla dist (C_list, X0_t)
+        # for key in conditions_norms.keys():
+        #     print(f"conditional_norms[{key}] = {conditions_norms[key][0]*conditions_norms[key][1]}")
+        print(f"weighted_norm = {weighted_norm}    |    weighted_interactions = {weighted_interactions}")
+
+        # # WORKINGempirical weight adjustment for norms and interaction terms
+        # weighted_norm = sum([value[0]*value[1] for key, value in conditions_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
+
+        # norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
+        # for key in conditions_norms.keys():
+        #     print(f"conditional_norms[{key}] = {conditions_norms[key][0]*conditions_norms[key][1]}")
 
         # # distance based normalisation (not working well despite comparabale ratio to empircal)
-        # distance_sums = sum([value[0] for key, value in conditional_norms.items()])
-        # weighted_norm = sum([value[0]*(value[0]/distance_sums) for key, value in conditional_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
+        # distance_sums = sum([value[0] for key, value in conditions_norms.items()])
+        # weighted_norm = sum([value[0]*(value[0]/distance_sums) for key, value in conditions_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
         # norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
-        # for key in conditional_norms.keys():
-        #     print(f"conditional_norms[{key}] = {conditional_norms[key][0]*conditional_norms[key][0]/distance_sums}")
+        # for key in conditions_norms.keys():
+        #     print(f"conditions_norms[{key}] = {conditions_norms[key][0]*conditions_norms[key][0]/distance_sums}")
 
 
 

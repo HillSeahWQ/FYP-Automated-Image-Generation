@@ -281,6 +281,27 @@ class CLIPEncoder(nn.Module):
             return self.encode_image_with_text(image, text)
         else:
             return self.encode_image_with_features(image)
+        
+    def get_gaussian_kernal(self, image, text, sigma):
+        text = clip.tokenize(text).cuda()
+
+        image = torch.nn.functional.interpolate(image, size=224, mode='bicubic')
+        image = self.preprocess(image)
+        image_feature, _ = self.clip_model.encode_image_with_features(image)
+        image_feature = image_feature / image_feature.norm(dim=-1, keepdim=True)  # Normalize image features
+
+        text_feature = self.clip_model.encode_text(text)
+        text_feature = text_feature / text_feature.norm(dim=-1, keepdim=True)  # Normalize text features
+        text_feature = text_feature.repeat(image.shape[0], 1) # Repeat the text feature to match the batch size of the image
+
+        # Compute the cosine similarity
+        cosine_similarity = torch.sum(image_feature * text_feature, dim=-1)  # (N,)
+        cosine_similarity = cosine_similarity.unsqueeze(1)  # (N, 1)
+
+        # Compute the Gaussian kernel
+        gaussian_similarity = torch.exp(-((1 - cosine_similarity) ** 2) / (2 * (sigma ** 2)))
+
+        return gaussian_similarity
 
 
 if __name__ == "__main__":

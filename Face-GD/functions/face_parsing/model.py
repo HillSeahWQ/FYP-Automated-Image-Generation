@@ -361,8 +361,52 @@ class FaceParseTool(nn.Module):
         seg_image = PIL.Image.fromarray(colormap)
         seg_image.save(output_image_path)
         print(f"Segmentation map saved to {output_image_path}")
+    
+    def normalize_mask(self, mask, method="min-max"):
+        if method == "min-max":
+            # Min-Max normalization (calculate min and max across spatial dimensions)
+            mask_min = mask.view(mask.size(0), -1).min(dim=1, keepdim=True).values  # Flatten spatial dims
+            mask_min = mask_min.view(mask.size(0), 1, 1, 1)  # Reshape for broadcasting
+
+            mask_max = mask.view(mask.size(0), -1).max(dim=1, keepdim=True).values  # Flatten spatial dims
+            mask_max = mask_max.view(mask.size(0), 1, 1, 1)  # Reshape for broadcasting
+
+            normalized_mask = (mask - mask_min) / (mask_max - mask_min + 1e-8)
+
+        elif method == "softmax":
+            # Softmax normalization across channels
+            normalized_mask = torch.softmax(mask, dim=1)
+
+        elif method == "l2":
+            # L2 normalization
+            norm = torch.norm(mask.view(mask.size(0), -1), dim=1, keepdim=True) + 1e-8
+            norm = norm.view(mask.size(0), 1, 1, 1)  # Reshape for broadcasting
+            normalized_mask = mask / norm
+
+        else:
+            raise ValueError("Unsupported normalization method. Choose from 'min-max', 'softmax', or 'l2'.")
+
+        return normalized_mask
+
+    def get_gaussian_kernal(self, image, sigma, normalization="min-max"):
+        image = torch.nn.functional.interpolate(image, size=512, mode='bicubic')
+        image = self.preprocess(image)
         
+        ref_mask = self.net(self.ref)[0]
+        img_mask = self.net(image)[0]
         
+        # Normalize the masks
+        ref_mask = self.normalize_mask(ref_mask, method=normalization)
+        img_mask = self.normalize_mask(img_mask, method=normalization)
+
+        # Compute pixel-wise distance (squared L2 norm)
+        mask_distance = torch.mean((img_mask - ref_mask) ** 2, dim=(1, 2, 3))  # Per-image distance
+
+        # Apply Gaussian function
+        gaussian_similarity = torch.exp(-mask_distance / (2 * sigma ** 2))  # Gaussian kernel
+
+        return gaussian_similarity
+
         
 
 

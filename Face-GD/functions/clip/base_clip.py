@@ -282,7 +282,7 @@ class CLIPEncoder(nn.Module):
         else:
             return self.encode_image_with_features(image)
         
-    def get_gaussian_kernal(self, image, text, sigma):
+    def get_gaussian_kernel(self, image, text, sigma):
         text = clip.tokenize(text).cuda()
 
         image = torch.nn.functional.interpolate(image, size=224, mode='bicubic')

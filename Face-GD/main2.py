@@ -171,8 +171,8 @@ def main_multi_conditions():
 
     conditions = {
         "clip": "black woman",
-        "parse": "./images/294.jpg",
-        # "arc": "./images/mo.jpg"
+        # "parse": "./images/294.jpg",
+        "arc": "./images/id10.png",
         # "landmark": "./images/2334.jpg"
     }
     print(f"main_multi_conditions(): conditions = {conditions}")

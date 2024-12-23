@@ -105,3 +105,40 @@ class FaceLandMarkTool(nn.Module):
         # Save the image with landmarks overlaid using Pillow
         pil_img.save(output_path)
         print(f"Saved image with landmarks to {output_path}")
+
+    
+    def normalize_landmarks(self, landmarks, image_width, image_height):
+        # Reshape if necessary
+        if landmarks.dim() == 2 and landmarks.size(1) == 136:  # Check if it's in [1, 136] format
+            landmarks = landmarks.view(landmarks.shape[0], -1, 2)  # Reshape to [batch_size, num_landmarks, 2]
+        
+        if landmarks.dim() == 3:
+            landmarks[:, :, 0] /= image_width  # Normalize x-coordinates
+            landmarks[:, :, 1] /= image_height  # Normalize y-coordinates
+        else:
+            raise ValueError(f"Unexpected tensor shape: {landmarks.shape}")
+
+        return landmarks
+    
+    def get_gaussian_kernel(self, image, sigma):
+        image = (image + 1.0) / 2.0
+        image = image[:, :, self.top:self.bottom, self.left:self.right]
+        image = torch.nn.functional.interpolate(image, size=self.out_size, mode='bicubic')
+
+        landmark_img = self.landmark_net(image)[0]
+
+        # image_width = self.out_size
+        # image_height = self.out_size
+        # landmark_img = self.normalize_landmarks(landmark_img, image_width, image_height)
+        # ref_landmarks = self.normalize_landmarks(self.landmark_ref, image_width, image_height)
+        # landmark_distance = torch.norm(landmark_img - ref_landmarks, dim=-1)  # (batch_size, num_landmarks)
+        # mean_distance = torch.mean(landmark_distance, dim=1)  # Mean distance per image (batch_size,)
+        
+        landmark_img = landmark_img.view(landmark_img.shape[0], -1, 2)  # Reshape to [batch_size, num_landmarks, 2]
+        landmarks_ref = self.landmark_ref.view(self.landmark_ref.shape[0], -1, 2)  # Reshape to [batch_size, num_landmarks, 2]
+        landmark_distance = torch.norm(landmark_img - landmarks_ref, dim=-1)  # (batch_size, num_landmarks)
+        mean_distance = torch.mean(landmark_distance, dim=1)  # Mean distance per image (batch_size,)
+
+        # Apply Gaussian kernel to the mean distance
+        gaussian_similarity = torch.exp(-mean_distance / (2 * sigma ** 2))  # Gaussian kernel similarity
+        return gaussian_similarity

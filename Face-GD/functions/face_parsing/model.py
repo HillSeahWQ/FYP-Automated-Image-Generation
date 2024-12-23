@@ -388,7 +388,7 @@ class FaceParseTool(nn.Module):
 
         return normalized_mask
 
-    def get_gaussian_kernal(self, image, sigma, normalization="min-max"):
+    def get_gaussian_kernel(self, image, sigma, normalization="min-max"):
         image = torch.nn.functional.interpolate(image, size=512, mode='bicubic')
         image = self.preprocess(image)
         

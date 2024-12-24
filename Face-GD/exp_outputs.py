@@ -31,18 +31,18 @@ def main(
         img_ref_folder = Path().cwd() / "images",
         img_output_folder = Path().cwd() / "exp" / "conditions"
 ):
-    # save_segmentation_map(
-    #     img_ref_path=img_ref_folder/"294.jpg",
-    #     img_output_folder=img_output_folder
-    # )
-    # save_sketch(
-    #     img_ref_path=img_ref_folder/"294.jpg", 
-    #     img_output_folder=img_output_folder
-    # )
-    save_landmarks(
-        img_ref_path="./images/2334.jpg", 
+    save_segmentation_map(
+        img_ref_path=img_ref_folder/"294.jpg",
         img_output_folder=img_output_folder
     )
+    save_sketch(
+        img_ref_path=img_ref_folder/"294.jpg", 
+        img_output_folder=img_output_folder
+    )
+    # save_landmarks(
+    #     img_ref_path="./images/2334.jpg", 
+    #     img_output_folder=img_output_folder
+    # )
 
 
 if __name__ == "__main__":

@@ -81,10 +81,6 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
             #     wf = 0
             conditions_norms["parse"] = (torch.linalg.norm(residual), 1/1000)
             conditions_similarities["parse"] = parser.get_gaussian_kernel(image=x0_t, sigma=0.5)
-        if img2sketch:
-            residual = img2sketch.get_residual(x0_t)
-            conditions_norms["sketch"] = (torch.linalg.norm(residual), 1/10)
-            conditions_similarities["sketch"] = img2sketch.get_gaussian_kernel(image=x0_t, sigma=0.5)
         if img2landmark:
             residual = img2landmark.get_residual(x0_t)
             conditions_norms["landmark"] = (torch.linalg.norm(residual), 1)
@@ -93,6 +89,10 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
             residual = idloss.get_residual(x0_t)
             conditions_norms["arc"] = (torch.linalg.norm(residual), 1)
             conditions_similarities["arc"] = idloss.get_gaussian_kernel(image=x0_t, sigma=0.5)
+        if img2sketch:
+            residual = img2sketch.get_residual(x0_t)
+            conditions_norms["sketch"] = (torch.linalg.norm(residual), 1/10)
+            conditions_similarities["sketch"] = img2sketch.get_gaussian_kernel(image=x0_t, sigma=0.5)
 
         # multi conditional energy function approximation
         #TODO: How to find the perfect weight (so far, only tested empirical weight adjustment)
@@ -104,10 +104,9 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         weighted_interactions = sum([conditions_similarities_weights_map[t[0]]*t[1] for t in interactions])
         multi_cond_ef = weighted_norm + weighted_interactions
         norm_grad = torch.autograd.grad(outputs=multi_cond_ef, inputs=xt)[0] # nabla dist (C_list, X0_t)
-
+        print(f"weighted_norm = {weighted_norm}    |    weighted_interactions = {weighted_interactions}")
         # for key in conditions_norms.keys():
         #     print(f"conditional_norms[{key}] = {conditions_norms[key][0]*conditions_norms[key][1]}")
-        print(f"weighted_norm = {weighted_norm}    |    weighted_interactions = {weighted_interactions}")
         # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

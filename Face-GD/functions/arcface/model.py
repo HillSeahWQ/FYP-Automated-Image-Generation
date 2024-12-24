@@ -43,12 +43,12 @@ class IDLoss(nn.Module):
     def get_gaussian_kernel(self, image, sigma):
         img_feat = self.extract_feats(image)
         ref_feat = self.extract_feats(self.ref)
-        
+
         distance = torch.norm(img_feat - ref_feat, dim=-1)
 
         # Apply Gaussian kernel
         gaussian_similarity = torch.exp(-distance**2 / (2 * sigma**2))
-
+        
         return gaussian_similarity
 
 

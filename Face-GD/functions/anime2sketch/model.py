@@ -192,7 +192,8 @@ class FaceSketchTool(nn.Module):
         sketch_image = self.net(image)
         sketch_ref = self.net(self.ref)
 
-        distance = torch.norm(sketch_image - sketch_ref, dim=-1)
+        # Compute the Euclidean distance
+        distance = torch.norm(sketch_image.view(-1) - sketch_ref.view(-1), p=2)
 
         # Apply Gaussian kernel
         gaussian_similarity = torch.exp(-distance**2 / (2 * sigma**2))

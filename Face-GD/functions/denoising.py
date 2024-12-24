@@ -20,7 +20,7 @@ def compute_alpha(beta, t):
 
 def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rho_scale=1.0, prompt=None, stop=100, domain="face", ref_path=None):
     # Initialize the required tools based on the input list
-    conditions_similarities_weights_map = {"clipXparse": 1, "clipXlandmark": 1, "clipXarc": 1}
+    conditions_similarities_weights_map = {"clipXparse": 1, "clipXlandmark": 1, "clipXarc": 1, "clipXsketch":1}
     clip_encoder, parser, img2sketch, img2landmark, idloss = None, None, None, None, None
     
     condition_names = list(conditions.keys())
@@ -84,6 +84,7 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         if img2sketch:
             residual = img2sketch.get_residual(x0_t)
             conditions_norms["sketch"] = (torch.linalg.norm(residual), 1/10)
+            conditions_similarities["sketch"] = img2sketch.get_gaussian_kernel(image=x0_t, sigma=0.5)
         if img2landmark:
             residual = img2landmark.get_residual(x0_t)
             conditions_norms["landmark"] = (torch.linalg.norm(residual), 1)

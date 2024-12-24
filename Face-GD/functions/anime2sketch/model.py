@@ -188,9 +188,13 @@ class FaceSketchTool(nn.Module):
         output_image.save(output_path)
         print(f"Saved sketch image to {output_path}")
 
-        
+    def get_gaussian_kernel(self, image, sigma):
+        sketch_image = self.net(image)
+        sketch_ref = self.net(self.ref)
 
+        distance = torch.norm(sketch_image - sketch_ref, dim=-1)
 
+        # Apply Gaussian kernel
+        gaussian_similarity = torch.exp(-distance**2 / (2 * sigma**2))
 
-
-
+        return gaussian_similarity

@@ -98,24 +98,24 @@ def multi_condition_ddim_diffusion(x, seq, model, b, conditions, cls_fn=None, rh
         #TODO: How to find the perfect weight (so far, only tested empirical weight adjustment)
 
         # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # # *** With interaction terms - empirical weight adjustment for norms and interaction terms
-        weighted_norm = sum([value[0]*value[1] for key, value in conditions_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
-        interactions = [(f"{key1}X{key2}", value1 * value2) for (key1, value1), (key2, value2) in combinations(conditions_similarities.items(), 2)] # get all possible combinations of interaction terms (gaussian kernal product) list of tuples("CiXCj", K(x0|t, Ci) * K(x0|t, Cj))
-        weighted_interactions = sum([conditions_similarities_weights_map[t[0]]*t[1] for t in interactions])
-        multi_cond_ef = weighted_norm + weighted_interactions
-        norm_grad = torch.autograd.grad(outputs=multi_cond_ef, inputs=xt)[0] # nabla dist (C_list, X0_t)
-        print(f"weighted_norm = {weighted_norm}    |    weighted_interactions = {weighted_interactions}")
-        # for key in conditions_norms.keys():
-        #     print(f"conditional_norms[{key}] = {conditions_norms[key][0]*conditions_norms[key][1]}")
+        # # # *** With interaction terms - empirical weight adjustment for norms and interaction terms
+        # weighted_norm = sum([value[0]*value[1] for key, value in conditions_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
+        # interactions = [(f"{key1}X{key2}", value1 * value2) for (key1, value1), (key2, value2) in combinations(conditions_similarities.items(), 2)] # get all possible combinations of interaction terms (gaussian kernal product) list of tuples("CiXCj", K(x0|t, Ci) * K(x0|t, Cj))
+        # weighted_interactions = sum([conditions_similarities_weights_map[t[0]]*t[1] for t in interactions])
+        # multi_cond_ef = weighted_norm + weighted_interactions
+        # norm_grad = torch.autograd.grad(outputs=multi_cond_ef, inputs=xt)[0] # nabla dist (C_list, X0_t)
+        # print(f"weighted_norm = {weighted_norm}    |    weighted_interactions = {weighted_interactions}")
+        # # for key in conditions_norms.keys():
+        # #     print(f"conditional_norms[{key}] = {conditions_norms[key][0]*conditions_norms[key][1]}")
         # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # # *** No interaction terms WORKING: empirical weight adjustment for norms and interaction terms
-        # weighted_norm = sum([value[0]*value[1] for key, value in conditions_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
+        weighted_norm = sum([value[0]*value[1] for key, value in conditions_norms.items()]) # dist (C_list, X0_t) --> ni = 1/N for dist (ci, x0|t)
 
-        # norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
-        # for key in conditions_norms.keys():
-        #     print(f"conditional_norms[{key}] = {conditions_norms[key][0]*conditions_norms[key][1]}")
+        norm_grad = torch.autograd.grad(outputs=weighted_norm, inputs=xt)[0] # nabla dist (C_list, X0_t)
+        for key in conditions_norms.keys():
+            print(f"conditional_norms[{key}] = {conditions_norms[key][0]*conditions_norms[key][1]}")
         # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

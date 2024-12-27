@@ -3,6 +3,7 @@ import torch
 from torch import nn
 from .facial_recognition.model_irse import Backbone
 import torchvision
+from PIL import Image
 
 
 class IDLoss(nn.Module):
@@ -18,7 +19,7 @@ class IDLoss(nn.Module):
         self.to_tensor = torchvision.transforms.ToTensor()
 
         self.ref_path = "/workspace/ddgm/functions/arcface/land.png" if not ref_path else ref_path
-        from PIL import Image
+        
         img = Image.open(self.ref_path)
         image = img.resize((256, 256), Image.BILINEAR)
         img = self.to_tensor(image)
@@ -50,9 +51,28 @@ class IDLoss(nn.Module):
         gaussian_similarity = torch.exp(-distance**2 / (2 * sigma**2))
         
         return gaussian_similarity
+    
+    def calculate_id_distance(self, image_path1, image_path2):
 
+        # Load and preprocess the first image
+        img1 = Image.open(image_path1).resize((256, 256), Image.BILINEAR)
+        img1 = self.to_tensor(img1)
+        img1 = img1 * 2 - 1
+        img1 = torch.unsqueeze(img1, 0).cuda()
 
+        # Load and preprocess the second image
+        img2 = Image.open(image_path2).resize((256, 256), Image.BILINEAR)
+        img2 = self.to_tensor(img2)
+        img2 = img2 * 2 - 1
+        img2 = torch.unsqueeze(img2, 0).cuda()
 
+        # Extract features
+        feats1 = self.extract_feats(img1)
+        feats2 = self.extract_feats(img2)
+
+        # Calculate the distance
+        distance = torch.norm(feats1 - feats2, dim=1).mean()
+        return distance
 
 
 

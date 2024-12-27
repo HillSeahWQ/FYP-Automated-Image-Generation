@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn 
 import functools
 import torchvision
+from PIL import Image
 
 
 class UnetGenerator(nn.Module):
@@ -128,7 +129,7 @@ class FaceSketchTool(nn.Module):
         self.to_tensor = torchvision.transforms.ToTensor()
         
         self.reference_img_path = "/workspace/ddgm/functions/anime2sketch/1397.png" if not ref_path else ref_path
-        from PIL import Image
+ 
         img = Image.open(self.reference_img_path)
         image = img.resize((256, 256), Image.BILINEAR)
         img = self.to_tensor(image)
@@ -199,3 +200,25 @@ class FaceSketchTool(nn.Module):
         gaussian_similarity = torch.exp(-distance**2 / (2 * sigma**2))
 
         return gaussian_similarity
+    
+
+    def calculate_sketch_distance(self, image_path1, image_path2):
+        # Load and preprocess the first image
+        img1 = Image.open(image_path1).resize((256, 256), Image.BILINEAR)
+        img1 = self.to_tensor(img1)
+        img1 = img1 * 2 - 1
+        img1 = torch.unsqueeze(img1, 0).cuda()
+
+        # Load and preprocess the second image
+        img2 = Image.open(image_path2).resize((256, 256), Image.BILINEAR)
+        img2 = self.to_tensor(img2)
+        img2 = img2 * 2 - 1
+        img2 = torch.unsqueeze(img2, 0).cuda()
+
+        # Generate sketches
+        sketch1 = self.net(img1)
+        sketch2 = self.net(img2)
+
+        # Calculate the distance
+        distance = torch.norm(sketch1 - sketch2, dim=1).mean()
+        return distance

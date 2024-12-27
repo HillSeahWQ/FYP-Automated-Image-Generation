@@ -301,7 +301,28 @@ class FaceParseTool(nn.Module):
             (0.485*2-1, 0.456*2-1, 0.406*2-1), 
             (0.229*2, 0.224*2, 0.225*2)
         )
+
         
+    def calculate_mask_distance(self, image_path1, image_path2):
+        # Load and preprocess the first image
+        img1 = PIL.Image.open(image_path1).convert('RGB')
+        img1 = img1.resize((512, 512), PIL.Image.BILINEAR)
+        img1 = self.to_tensor(img1).unsqueeze(0).cuda()
+
+        # Load and preprocess the second image
+        img2 = PIL.Image.open(image_path2).convert('RGB')
+        img2 = img2.resize((512, 512), PIL.Image.BILINEAR)
+        img2 = self.to_tensor(img2).unsqueeze(0).cuda()
+
+        # Get segmentation masks
+        mask1 = self.net(img1)[0]
+        mask2 = self.net(img2)[0]
+
+        # Calculate the distance between masks (e.g., L2 norm)
+        distance = torch.norm(mask1 - mask2, dim=1).mean()
+        return distance
+    
+
     def get_residual(self, image):
         image = torch.nn.functional.interpolate(image, size=512, mode='bicubic')
         image = self.preprocess(image)

@@ -4,6 +4,7 @@ from .clip import clip
 # from clip import clip
 import torchvision
 # from mmedit.models.registry import COMPONENTS
+from PIL import Image
 
 model_name = "ViT-B/16"
 # model_name = "ViT-B/32"
@@ -302,6 +303,26 @@ class CLIPEncoder(nn.Module):
         gaussian_similarity = torch.exp(-((1 - cosine_similarity) ** 2) / (2 * (sigma ** 2)))
 
         return gaussian_similarity
+    
+    def calculate_euclidean_distance(self, image_path, text):
+
+        # Load and preprocess the image
+        img = Image.open(image_path).convert('RGB')
+        img = img.resize((224, 224), Image.BILINEAR)
+        img = torchvision.transforms.ToTensor()(img)
+        img = self.preprocess(img).unsqueeze(0).cuda()
+
+        # Tokenize the text
+        text = clip.tokenize(text).cuda()
+
+        # Get image and text features
+        image_feature, _ = self.clip_model.encode_image_with_features(img)
+        text_feature = self.clip_model.encode_text(text)
+        text_feature = text_feature.repeat(img.shape[0], 1)
+
+        # Calculate Euclidean distance
+        distances = torch.norm(text_feature - image_feature, dim=1)
+        return distances.item()
 
 
 if __name__ == "__main__":

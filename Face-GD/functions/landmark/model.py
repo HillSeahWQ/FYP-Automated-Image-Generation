@@ -142,3 +142,82 @@ class FaceLandMarkTool(nn.Module):
         # Apply Gaussian kernel to the mean distance
         gaussian_similarity = torch.exp(-mean_distance / (2 * sigma ** 2))  # Gaussian kernel similarity
         return gaussian_similarity
+    
+    def calculate_landmark_distance(self, image_path1, image_path2):
+
+        # Preprocess the first image
+        img1 = cv2.imread(image_path1)
+        img1 = cv2.resize(img1, (256, 256))
+
+        retinaface = Retinaface.Retinaface()
+        faces1 = retinaface(img1)
+        face1 = faces1[0]
+
+        x1 = face1[0]
+        y1 = face1[1]
+        x2 = face1[2]
+        y2 = face1[3]
+        w1 = x2 - x1 + 1
+        h1 = y2 - y1 + 1
+        size1 = int(min([w1, h1]) * 1.2)
+        cx1 = x1 + w1 // 2
+        cy1 = y1 + h1 // 2
+        x1 = cx1 - size1 // 2
+        x2 = x1 + size1
+        y1 = cy1 - size1 // 2
+        y2 = y1 + size1
+
+        new_bbox1 = list(map(int, [x1, x2, y1, y2]))
+        new_bbox1 = BBox(new_bbox1)
+
+        cropped1 = img1[new_bbox1.top:new_bbox1.bottom, new_bbox1.left:new_bbox1.right]
+        cropped_face1 = cv2.resize(cropped1, (self.out_size, self.out_size))
+
+        test_face1 = cropped_face1.copy()
+        test_face1 = test_face1 / 255.0
+        test_face1 = test_face1.transpose((2, 0, 1))
+        test_face1 = test_face1.reshape((1,) + test_face1.shape)
+
+        input_img1 = torch.from_numpy(test_face1).float().cuda()  # Move to GPU
+
+        landmark1 = self.landmark_net(input_img1)[0]
+
+        # Preprocess the second image
+        img2 = cv2.imread(image_path2)
+        img2 = cv2.resize(img2, (256, 256))
+
+        faces2 = retinaface(img2)
+        face2 = faces2[0]
+
+        x1 = face2[0]
+        y1 = face2[1]
+        x2 = face2[2]
+        y2 = face2[3]
+        w2 = x2 - x1 + 1
+        h2 = y2 - y1 + 1
+        size2 = int(min([w2, h2]) * 1.2)
+        cx2 = x1 + w2 // 2
+        cy2 = y1 + h2 // 2
+        x1 = cx2 - size2 // 2
+        x2 = x1 + size2
+        y1 = cy2 - size2 // 2
+        y2 = y1 + size2
+
+        new_bbox2 = list(map(int, [x1, x2, y1, y2]))
+        new_bbox2 = BBox(new_bbox2)
+
+        cropped2 = img2[new_bbox2.top:new_bbox2.bottom, new_bbox2.left:new_bbox2.right]
+        cropped_face2 = cv2.resize(cropped2, (self.out_size, self.out_size))
+
+        test_face2 = cropped_face2.copy()
+        test_face2 = test_face2 / 255.0
+        test_face2 = test_face2.transpose((2, 0, 1))
+        test_face2 = test_face2.reshape((1,) + test_face2.shape)
+
+        input_img2 = torch.from_numpy(test_face2).float().cuda()  # Move to GPU
+
+        landmark2 = self.landmark_net(input_img2)[0]
+
+        # Calculate the distance between the landmarks
+        distance = torch.norm(landmark1 - landmark2, dim=0).mean()
+        return distance

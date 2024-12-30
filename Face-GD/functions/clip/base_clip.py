@@ -5,6 +5,8 @@ from .clip import clip
 import torchvision
 # from mmedit.models.registry import COMPONENTS
 from PIL import Image
+import numpy as np
+from scipy.linalg import sqrtm
 
 model_name = "ViT-B/16"
 # model_name = "ViT-B/32"
@@ -295,34 +297,70 @@ class CLIPEncoder(nn.Module):
         text_feature = text_feature / text_feature.norm(dim=-1, keepdim=True)  # Normalize text features
         text_feature = text_feature.repeat(image.shape[0], 1) # Repeat the text feature to match the batch size of the image
 
-        # Compute the cosine similarity
+        # compute the cosine similarity
         cosine_similarity = torch.sum(image_feature * text_feature, dim=-1)  # (N,)
         cosine_similarity = cosine_similarity.unsqueeze(1)  # (N, 1)
 
-        # Compute the Gaussian kernel
+        # compute the Gaussian kernel
         gaussian_similarity = torch.exp(-((1 - cosine_similarity) ** 2) / (2 * (sigma ** 2)))
 
         return gaussian_similarity
     
     def calculate_euclidean_distance(self, image_path, text):
 
-        # Load and preprocess the image
+        # load and preprocess the image
         img = Image.open(image_path).convert('RGB')
         img = img.resize((224, 224), Image.BILINEAR)
         img = torchvision.transforms.ToTensor()(img)
         img = self.preprocess(img).unsqueeze(0).cuda()
 
-        # Tokenize the text
+        # tokenize the text
         text = clip.tokenize(text).cuda()
 
-        # Get image and text features
+        # get image and text features
         image_feature, _ = self.clip_model.encode_image_with_features(img)
         text_feature = self.clip_model.encode_text(text)
         text_feature = text_feature.repeat(img.shape[0], 1)
 
-        # Calculate Euclidean distance
+        # calculate Euclidean distance
         distances = torch.norm(text_feature - image_feature, dim=1)
         return distances.item()
+    
+    def calculate_fid(self, image_path, text):
+
+        # calculate the Frechet Inception Distance (FID) between the image and text embeddings.
+        text = clip.tokenize(text).cuda()
+
+        # load and preprocess the image
+        img = Image.open(image_path).convert('RGB')
+        img = img.resize((224, 224), Image.BILINEAR)
+        img = torchvision.transforms.ToTensor()(img)
+        img = self.preprocess(img).unsqueeze(0).cuda()
+
+        # extract features
+        image_feature, _ = self.clip_model.encode_image_with_features(img)
+        text_feature = self.clip_model.encode_text(text)
+
+        # calculate means and covariances
+        mu1, sigma1 = image_feature.mean(dim=0).detach().cpu().numpy(), np.cov(image_feature.cpu().detach().numpy(), rowvar=False)
+        mu2, sigma2 = text_feature.mean(dim=0).detach().cpu().numpy(), np.cov(text_feature.cpu().detach().numpy(), rowvar=False)
+
+        if sigma1.ndim < 2:
+            sigma1 = np.atleast_2d(sigma1)
+        if sigma2.ndim < 2:
+            sigma2 = np.atleast_2d(sigma2)
+
+        # compute FID
+        diff = mu1 - mu2
+        covmean, _ = sqrtm(sigma1.dot(sigma2), disp=False)
+
+        if np.iscomplexobj(covmean):
+            covmean = covmean.real
+
+        fid_score = diff.dot(diff) + np.trace(sigma1 + sigma2 - 2 * covmean)
+
+        return fid_score
+
 
 
 if __name__ == "__main__":

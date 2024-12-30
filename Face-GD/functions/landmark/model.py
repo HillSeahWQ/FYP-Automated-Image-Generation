@@ -7,6 +7,8 @@ import cv2
 from PIL import Image
 from .Retinaface import Retinaface
 from .common.utils import BBox
+import numpy as np
+from scipy.linalg import sqrtm
 
 
 class FaceLandMarkTool(nn.Module):
@@ -58,7 +60,8 @@ class FaceLandMarkTool(nn.Module):
         input_ref = torch.autograd.Variable(input_ref)
 
         self.landmark_ref = self.landmark_net(input_ref)[0].cuda()
-        
+    
+
     def get_residual(self, image):
         image = (image + 1.0) / 2.0
         image = image[:, :, self.top:self.bottom, self.left:self.right]
@@ -145,7 +148,7 @@ class FaceLandMarkTool(nn.Module):
     
     def calculate_landmark_distance(self, image_path1, image_path2):
 
-        # Preprocess the first image
+        # preprocess the images
         img1 = cv2.imread(image_path1)
         img1 = cv2.resize(img1, (256, 256))
 
@@ -182,7 +185,6 @@ class FaceLandMarkTool(nn.Module):
 
         landmark1 = self.landmark_net(input_img1)[0]
 
-        # Preprocess the second image
         img2 = cv2.imread(image_path2)
         img2 = cv2.resize(img2, (256, 256))
 
@@ -218,6 +220,66 @@ class FaceLandMarkTool(nn.Module):
 
         landmark2 = self.landmark_net(input_img2)[0]
 
-        # Calculate the distance between the landmarks
+        # calculate the distance between the landmarks
         distance = torch.norm(landmark1 - landmark2, dim=0).mean()
         return distance
+    
+    def calculate_fid(self, image_path1, image_path2):
+
+        def preprocess_image(image_path):
+            img = cv2.imread(image_path)
+            img = cv2.resize(img, (256, 256))
+
+            retinaface = Retinaface.Retinaface()
+            faces = retinaface(img)
+            face = faces[0]
+
+            x1 = face[0]
+            y1 = face[1]
+            x2 = face[2]
+            y2 = face[3]
+            w = x2 - x1 + 1
+            h = y2 - y1 + 1
+            size = int(min([w, h]) * 1.2)
+            cx = x1 + w // 2
+            cy = y1 + h // 2
+            x1 = cx - size // 2
+            x2 = x1 + size
+            y1 = cy - size // 2
+            y2 = y1 + size
+
+            new_bbox = list(map(int, [x1, x2, y1, y2]))
+            new_bbox = BBox(new_bbox)
+
+            cropped = img[new_bbox.top:new_bbox.bottom, new_bbox.left:new_bbox.right]
+            cropped_face = cv2.resize(cropped, (self.out_size, self.out_size))
+
+            test_face = cropped_face.copy()
+            test_face = test_face / 255.0
+            test_face = test_face.transpose((2, 0, 1))
+            test_face = test_face.reshape((1,) + test_face.shape)
+
+            input_img = torch.from_numpy(test_face).float().cuda()
+            return self.landmark_net(input_img)[0].detach().cpu().numpy()
+
+        # extract features for both images
+        landmark1 = preprocess_image(image_path1)
+        landmark2 = preprocess_image(image_path2)
+
+        # calculate mean and covariance
+        mu1, sigma1 = landmark1.mean(axis=0), np.cov(landmark1, rowvar=False)
+        mu2, sigma2 = landmark2.mean(axis=0), np.cov(landmark2, rowvar=False)
+
+        # ensure covariance matrices are valid
+        sigma1 = np.atleast_2d(sigma1)
+        sigma2 = np.atleast_2d(sigma2)
+
+        # compute FID
+        diff = mu1 - mu2
+        covmean, _ = sqrtm(sigma1.dot(sigma2), disp=False)
+
+        if np.iscomplexobj(covmean):
+            covmean = covmean.real
+
+        fid_score = np.dot(diff, diff).item() + np.trace(sigma1 + sigma2 - 2 * covmean)
+        return fid_score

@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import PIL
 import numpy as np
+from scipy.linalg import sqrtm
 
 from .resnet import Resnet18
 
@@ -301,26 +302,6 @@ class FaceParseTool(nn.Module):
             (0.485*2-1, 0.456*2-1, 0.406*2-1), 
             (0.229*2, 0.224*2, 0.225*2)
         )
-
-        
-    def calculate_mask_distance(self, image_path1, image_path2):
-        # Load and preprocess the first image
-        img1 = PIL.Image.open(image_path1).convert('RGB')
-        img1 = img1.resize((512, 512), PIL.Image.BILINEAR)
-        img1 = self.to_tensor(img1).unsqueeze(0).cuda()
-
-        # Load and preprocess the second image
-        img2 = PIL.Image.open(image_path2).convert('RGB')
-        img2 = img2.resize((512, 512), PIL.Image.BILINEAR)
-        img2 = self.to_tensor(img2).unsqueeze(0).cuda()
-
-        # Get segmentation masks
-        mask1 = self.net(img1)[0]
-        mask2 = self.net(img2)[0]
-
-        # Calculate the distance between masks (e.g., L2 norm)
-        distance = torch.norm(mask1 - mask2, dim=1).mean()
-        return distance
     
 
     def get_residual(self, image):
@@ -429,7 +410,64 @@ class FaceParseTool(nn.Module):
         return gaussian_similarity
 
         
+    def calculate_mask_distance(self, image_path1, image_path2):
+        # Load and preprocess the first image
+        img1 = PIL.Image.open(image_path1).convert('RGB')
+        img1 = img1.resize((512, 512), PIL.Image.BILINEAR)
+        img1 = self.to_tensor(img1).unsqueeze(0).cuda()
 
+        # Load and preprocess the second image
+        img2 = PIL.Image.open(image_path2).convert('RGB')
+        img2 = img2.resize((512, 512), PIL.Image.BILINEAR)
+        img2 = self.to_tensor(img2).unsqueeze(0).cuda()
+
+        # Get segmentation masks
+        mask1 = self.net(img1)[0]
+        mask2 = self.net(img2)[0]
+
+        # Calculate the distance between masks (e.g., L2 norm)
+        distance = torch.norm(mask1 - mask2, dim=1).mean()
+        return distance
+    
+
+    def calculate_fid(self, image_path1, image_path2):
+        # load and preprocess the images
+        img1 = PIL.Image.open(image_path1).convert('RGB')
+        img1 = img1.resize((512, 512), PIL.Image.BILINEAR)
+        img1 = self.to_tensor(img1).unsqueeze(0).cuda()
+
+        img2 = PIL.Image.open(image_path2).convert('RGB')
+        img2 = img2.resize((512, 512), PIL.Image.BILINEAR)
+        img2 = self.to_tensor(img2).unsqueeze(0).cuda()
+
+        # get segmentation masks
+        mask1 = self.net(img1)[0].detach().cpu().numpy()
+        mask2 = self.net(img2)[0].detach().cpu().numpy()
+
+        # calculate means and covariances
+        mu1 = mask1.mean(axis=(1, 2))
+        sigma1 = np.cov(mask1.reshape(mask1.shape[0], -1), rowvar=False)
+
+        mu2 = mask2.mean(axis=(1, 2))
+        sigma2 = np.cov(mask2.reshape(mask2.shape[0], -1), rowvar=False)
+
+        # ensure covariance matrices are valid
+        if sigma1.ndim < 2:
+            sigma1 = np.atleast_2d(sigma1)
+        if sigma2.ndim < 2:
+            sigma2 = np.atleast_2d(sigma2)
+
+        diff = mu1 - mu2
+
+        # ensure sigma1 and sigma2 are matrices
+        sigma1 = np.atleast_2d(sigma1)
+        sigma2 = np.atleast_2d(sigma2)
+
+        covmean, _ = sqrtm(np.dot(sigma1, sigma2), disp=False)
+        if np.iscomplexobj(covmean):
+            covmean = covmean.real
+
+        return np.dot(diff, diff.T).item() + np.trace(sigma1 + sigma2 - 2 * covmean)
 
 if __name__ == "__main__":
     net = BiSeNet(19)

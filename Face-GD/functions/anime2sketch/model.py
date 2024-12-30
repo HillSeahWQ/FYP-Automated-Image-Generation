@@ -4,6 +4,8 @@ import torch.nn as nn
 import functools
 import torchvision
 from PIL import Image
+import numpy as np
+from scipy.linalg import sqrtm
 
 
 class UnetGenerator(nn.Module):
@@ -203,22 +205,58 @@ class FaceSketchTool(nn.Module):
     
 
     def calculate_sketch_distance(self, image_path1, image_path2):
-        # Load and preprocess the first image
+        # load and preprocess the images
         img1 = Image.open(image_path1).resize((256, 256), Image.BILINEAR)
         img1 = self.to_tensor(img1)
         img1 = img1 * 2 - 1
         img1 = torch.unsqueeze(img1, 0).cuda()
 
-        # Load and preprocess the second image
         img2 = Image.open(image_path2).resize((256, 256), Image.BILINEAR)
         img2 = self.to_tensor(img2)
         img2 = img2 * 2 - 1
         img2 = torch.unsqueeze(img2, 0).cuda()
 
-        # Generate sketches
+        # generate sketches
         sketch1 = self.net(img1)
         sketch2 = self.net(img2)
 
-        # Calculate the distance
+        # calculate the distance
         distance = torch.norm(sketch1 - sketch2, dim=1).mean()
         return distance
+    
+
+    def calculate_fid(self, image_path1, image_path2):
+
+        def preprocess_image(image_path):
+            img = Image.open(image_path).resize((256, 256), Image.BILINEAR)
+            img = self.to_tensor(img)
+            img = img * 2 - 1
+            img = torch.unsqueeze(img, 0).cuda()
+            return self.net(img).detach().cpu().numpy()
+
+        # extract sketch features for both images
+        sketch1 = preprocess_image(image_path1)
+        sketch2 = preprocess_image(image_path2)
+
+        # calculate mean and covariance
+        mu1, sigma1 = sketch1.mean(axis=(1, 2)), np.cov(sketch1.reshape(sketch1.shape[0], -1), rowvar=False)
+        mu2, sigma2 = sketch2.mean(axis=(1, 2)), np.cov(sketch2.reshape(sketch2.shape[0], -1), rowvar=False)
+
+        # ensure covariance matrices are valid
+        sigma1 = np.atleast_2d(sigma1)
+        sigma2 = np.atleast_2d(sigma2)
+
+        # compute FID
+        diff = mu1 - mu2
+
+        # ensure sigma1 and sigma2 are matrices
+        sigma1 = np.atleast_2d(sigma1)
+        sigma2 = np.atleast_2d(sigma2)
+
+        covmean, _ = sqrtm(np.dot(sigma1, sigma2), disp=False)
+        if np.iscomplexobj(covmean):
+            covmean = covmean.real
+
+        fid_score = np.dot(diff, diff.T).item() + np.trace(sigma1 + sigma2 - 2 * covmean)
+
+        return fid_score

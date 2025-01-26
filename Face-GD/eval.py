@@ -61,7 +61,7 @@ def evaluate(generated_image_directory, conditions):
 
 
 # To edit
-generated_image_directory = Path.cwd() / "exp" / "res" / "clip_parse_ref294jpg" / "int_terms" #clip_landmark_ref2334jpg, 
+generated_image_directory = Path.cwd() / "exp" / "fab" / "t2" # Path.cwd() / "exp" / "res" / "clip_parse_ref294jpg" / "int_terms" #clip_landmark_ref2334jpg, 
 conditions = {
     "clip": "black woman",
     "parse": "./images/294.jpg",

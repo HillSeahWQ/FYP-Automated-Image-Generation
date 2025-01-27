@@ -133,6 +133,10 @@ class FaceSketchTool(nn.Module):
         self.reference_img_path = "/workspace/ddgm/functions/anime2sketch/1397.png" if not ref_path else ref_path
  
         img = Image.open(self.reference_img_path)
+
+        # if img.mode == "RGBA":
+        #     img = img.convert("RGB")
+
         image = img.resize((256, 256), Image.BILINEAR)
         img = self.to_tensor(image)
         img = img * 2 - 1
@@ -159,6 +163,10 @@ class FaceSketchTool(nn.Module):
 
         # preprocessing
         img = Image.open(reference_img_path)
+        
+        if img.mode == "RGBA":
+            img = img.convert("RGB")
+
         image = img.resize((256, 256), Image.BILINEAR)
         img = self.to_tensor(image)
         img = img * 2 - 1

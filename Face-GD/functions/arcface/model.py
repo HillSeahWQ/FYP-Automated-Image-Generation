@@ -24,6 +24,10 @@ class IDLoss(nn.Module):
         self.ref_path = "/workspace/ddgm/functions/arcface/land.png" if not ref_path else ref_path
         
         img = Image.open(self.ref_path)
+
+        if img.mode == "RGBA":
+            img = img.convert("RGB")
+
         image = img.resize((256, 256), Image.BILINEAR)
         img = self.to_tensor(image)
         img = img * 2 - 1

@@ -32,11 +32,11 @@ def main(
         img_output_folder = Path().cwd() / "exp" / "conditions"
 ):
     save_segmentation_map(
-        img_ref_path=img_ref_folder/"bm.",
+        img_ref_path=img_ref_folder/"111.png",
         img_output_folder=img_output_folder
     )
     # save_sketch(
-    #     img_ref_path=img_ref_folder/"image.png", 
+    #     img_ref_path=img_ref_folder/"111.png", 
     #     img_output_folder=img_output_folder
     # )
     # save_landmarks(

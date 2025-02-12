@@ -290,7 +290,7 @@ class FaceParseTool(nn.Module):
         
 #         self.reference_img_path = "/userhome/yjw/ddgm_exp/functions/face_parsing/00234.png" 
         self.reference_img_path = "/workspace/ddgm/functions/face_parsing/43.jpg" if not ref_path else ref_path
-        img = PIL.Image.open(self.reference_img_path)
+        img = PIL.Image.open(self.reference_img_path).convert("RGB")
         # preprocess for ref image
         image = img.resize((512, 512), PIL.Image.BILINEAR)
         img = self.to_tensor(image)
@@ -344,7 +344,7 @@ class FaceParseTool(nn.Module):
     
     def save_segmentation_map(self, input_image_path, output_image_path):
         # Load and preprocess the input image
-        img = PIL.Image.open(input_image_path).resize((512, 512), PIL.Image.BILINEAR)
+        img = PIL.Image.open(input_image_path).convert("RGB").resize((512, 512), PIL.Image.BILINEAR)
         img_tensor = self.to_tensor(img).unsqueeze(0).cuda()
         
         # Perform inference to get the segmentation map

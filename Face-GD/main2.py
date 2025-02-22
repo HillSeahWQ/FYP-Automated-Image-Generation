@@ -172,7 +172,7 @@ def main_multi_conditions():
     conditions = {
         # "clip": "white man",
         # "parse": "./images/tilted_face.jpg", # 294.jpg
-        # "arc": "./images/id10.png", #id10.png
+        "arc": "./images/bl.png", #id10.png
         # "landmark": "./images/2334.jpg"
         # "sketch": "./images/294.jpg"
     }

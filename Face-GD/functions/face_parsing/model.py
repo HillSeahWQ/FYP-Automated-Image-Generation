@@ -468,6 +468,106 @@ class FaceParseTool(nn.Module):
             covmean = covmean.real
 
         return np.dot(diff, diff.T).item() + np.trace(sigma1 + sigma2 - 2 * covmean)
+    
+
+    def get_polynomial_kernel(self, image, degree=2, alpha=1.0, c=0.0, normalization="min-max"):
+        image = torch.nn.functional.interpolate(image, size=512, mode='bicubic')
+        image = self.preprocess(image)
+        
+        ref_mask = self.net(self.ref)[0]
+        img_mask = self.net(image)[0]
+        
+        # Normalize the masks
+        ref_mask = self.normalize_mask(ref_mask, method=normalization)
+        img_mask = self.normalize_mask(img_mask, method=normalization)
+
+        dot_product = torch.sum(ref_mask * img_mask, dim=(1, 2, 3))  # Sum over spatial dimensions
+
+        polynomial_kernel = (alpha * dot_product + c) ** degree
+
+        return polynomial_kernel
+
+    def get_sigmoid_kernel(self, image, alpha=1.0, c=0.0, normalization="min-max"):
+        image = torch.nn.functional.interpolate(image, size=512, mode='bicubic')
+        image = self.preprocess(image)
+
+        ref_mask = self.net(self.ref)[0]
+        img_mask = self.net(image)[0]
+
+        # Normalize the masks
+        ref_mask = self.normalize_mask(ref_mask, method=normalization)
+        img_mask = self.normalize_mask(img_mask, method=normalization)
+
+        dot_product = torch.sum(ref_mask * img_mask, dim=(1, 2, 3))  # Sum over spatial dimensions
+
+        # Apply sigmoid kernel transformation
+        sigmoid_kernel = torch.tanh(alpha * dot_product + c)
+
+        return sigmoid_kernel
+    
+    def get_euclidean_distance(self, image, normalization="min-max"):
+        image = torch.nn.functional.interpolate(image, size=512, mode='bicubic')
+        image = self.preprocess(image)
+
+        ref_mask = self.net(self.ref)[0]
+        img_mask = self.net(image)[0]
+
+        # Normalize masks
+        ref_mask = self.normalize_mask(ref_mask, method=normalization)
+        img_mask = self.normalize_mask(img_mask, method=normalization)
+
+        # Compute Euclidean distance
+        euclidean_distance = torch.norm(ref_mask - img_mask, p=2, dim=(1, 2, 3))
+
+        return euclidean_distance
+
+
+    def get_cosine_similarity(self, image, normalization="l2"):
+        image = torch.nn.functional.interpolate(image, size=512, mode='bicubic')
+        image = self.preprocess(image)
+
+        ref_mask = self.net(self.ref)[0]
+        img_mask = self.net(image)[0]
+
+        # Normalize masks using L2 norm (best for cosine similarity)
+        ref_mask = self.normalize_mask(ref_mask, method=normalization)
+        img_mask = self.normalize_mask(img_mask, method=normalization)
+
+        # Compute Cosine similarity
+        dot_product = torch.sum(ref_mask * img_mask, dim=(1, 2, 3))
+        norm_ref = torch.norm(ref_mask, p=2, dim=(1, 2, 3))
+        norm_img = torch.norm(img_mask, p=2, dim=(1, 2, 3))
+
+        cosine_similarity = dot_product / (norm_ref * norm_img + 1e-8)  # Avoid division by zero
+
+        return cosine_similarity
+
+
+    def get_pearson_correlation(self, image, normalization="min-max"):
+        image = torch.nn.functional.interpolate(image, size=512, mode='bicubic')
+        image = self.preprocess(image)
+
+        ref_mask = self.net(self.ref)[0]
+        img_mask = self.net(image)[0]
+
+        # Normalize masks
+        ref_mask = self.normalize_mask(ref_mask, method=normalization)
+        img_mask = self.normalize_mask(img_mask, method=normalization)
+
+        # Compute Pearson correlation
+        ref_mean = torch.mean(ref_mask, dim=(1, 2, 3), keepdim=True)
+        img_mean = torch.mean(img_mask, dim=(1, 2, 3), keepdim=True)
+
+        ref_centered = ref_mask - ref_mean
+        img_centered = img_mask - img_mean
+
+        numerator = torch.sum(ref_centered * img_centered, dim=(1, 2, 3))
+        denominator = torch.sqrt(torch.sum(ref_centered ** 2, dim=(1, 2, 3)) * torch.sum(img_centered ** 2, dim=(1, 2, 3)) + 1e-8)
+
+        pearson_correlation = numerator / denominator
+
+        return pearson_correlation
+
 
 if __name__ == "__main__":
     net = BiSeNet(19)

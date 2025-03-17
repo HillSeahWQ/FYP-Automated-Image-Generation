@@ -1,50 +1,77 @@
-# FreeDoM-Face/ImageNet
+# Multi-Conditional Image Generation
 
-This repo is designed to add FreeDoM-based control to diffusion models in the domain of face or ImageNet. 
+## Setup
 
-The pretrained diffusion models include human face model provided by [SDEdit](https://github.com/ermongroup/SDEdit) and unconditional [guided-diffusion](https://github.com/openai/guided-diffusion), the support image resolution is $256\times 256$.
+### 1. Create and Activate Conda Environment
+```bash
+conda env create -f environment.yaml
+conda activate ldm
+```
 
-## Installation
+### 2. Download Pre-Trained Models
+Download the models from the links provided below and place them in the appropriate directories.
 
-#### Environment
+### 3. Run the Model
+```bash
+python main.py
+```
 
-You can directly use the conda environment for [Stable Diffusion](https://github.com/CompVis/stable-diffusion) or [DDNM](https://github.com/wyhuai/DDNM). You can find configuration instructions in their GitHub links.
+## Configuration
+Modify the `config.py` file to change parameters and generate images based on desired conditions.
 
-#### Pre-trained model
+## Results
+Generated images can be found in:
+```bash
+./exp/image_samples/multi_cond
+```
 
-- human face diffusion model provided by [SDEdit](https://github.com/ermongroup/SDEdit)
-  - place the model in this directory `./exp/logs/celeba/celeba_hq.ckpt`
-- unconditional [guided diffusion model](https://github.com/openai/guided-diffusion)
-  - place the model in this directory `./exp/logs/imagenet/256x256_diffusion_uncond.pt`
-- [CLIP](https://github.com/openai/CLIP)
-  - The model will automatically download.
-- [face parsing model](https://github.com/zllrunning/face-parsing.PyTorch)
-  - place the model in this directory `./functions/face_parsing/79999_iter.pth`
-- [sketch model](https://github.com/Mukosame/Anime2Sketch)
-  - place the model in this directory `./functions/anime2sketch/netG.pth`
-- [landmark model](https://github.com/cunjian/pytorch_face_landmark)
-  - place the model in this directory:
-    -  `./functions/landmark/checkpoint/mobilefacenet_model_best.pth.tar`
-    - `./functions/landmark/checkpoint/mobilenet_224_model_best_gdconv_external.pth.tar`
-    - `./functions/landmark/Retinaface/weights/mobilenet0.25_Final.pth`
-- [ArcFace model](https://arxiv.org/abs/1801.07698)
-  - place the model in this directory `./functions/arcface/model_ir_se50.pth`
+## Models
 
-## Quick Start
+### 1. Human Face Diffusion Model (SDEdit)
+- Place the model in: `./exp/logs/celeba/celeba_hq.ckpt`
+- [Download](https://huggingface.co/gwang-kim/DiffusionCLIP-CelebA_HQ/tree/main)
 
-Just run `bash run.sh`, you will get the results.
+### 2. Unconditional Guided Diffusion Model
+- Place the model in: `./exp/logs/imagenet/256x256_diffusion_uncond.pt`
+- [Download](https://github.com/openai/guided-diffusion)
 
-The explanation of useful options:
+### 3. Face Parsing Model
+- Place the model in: `./functions/face_parsing/79999_iter.pth`
+- [Download](https://drive.google.com/file/d/154JgKpzCPW82qINcVieuPH3fZ2e0P812/view) ([Repo](https://github.com/zllrunning/face-parsing.PyTorch))
 
-- `-i` is the folder name of the results.
-- `-s` is the sampling method with different conditions, we support `	clip_ddim | parse_ddim | sketch_ddim | land_ddim | arc_ddim    `
-- `--doc` for human face model, choose `celeba_hq`; for ImageNet model, choose `imagenet`
-- `--timesteps` the number of sampling times, we use 100 as default setting.
-- `--seed` you can choose your seeds to make results different!
-  - `--model_type` for human face model, choose `"face"`; for ImageNet model, choose `"imagenet"`
-- `--prompt` is the text prompt for CLIP condition control
-- `--batch_size` control the number of generated images
-- `--ref_path` is the path of reference image
+### 4. Sketch Model
+- Place the model in: `./functions/anime2sketch/netG.pth`
+- [Download](https://drive.google.com/drive/folders/1Srf-WYUixK0wiUddc9y3pNKHHno5PN6R)
 
+### 5. Landmark Model
+- Place the models in:
+  - `./functions/landmark/checkpoint/mobilefacenet_model_best.pth.tar`  
+    [Download](https://github.com/cunjian/pytorch_face_landmark/blob/master/checkpoint/mobilefacenet_model_best.pth.tar)
+  - `./functions/landmark/checkpoint/mobilenet_224_model_best_gdconv_external.pth.tar`  
+    [Download](https://drive.google.com/file/d/1Le5UdpMkKOTRr1sTp4lwkw8263sbgdSe/view)
+  - `./functions/landmark/Retinaface/weights/mobilenet0.25_Final.pth`  
+    [Download](https://github.com/cunjian/pytorch_face_landmark/tree/master/Retinaface/weights)
 
+### 6. ArcFace Model
+- Place the model in: `./functions/arcface/model_ir_se50.pth`
+- [Download](https://onedrive.live.com/?authkey=%21AOw5TZL8cWlj10I&cid=CEC0E1F8F0542A13&id=CEC0E1F8F0542A13%21835&parId=root&action=locate) ([Repo](https://github.com/paul-pias/Face-Recognition?tab=readme-ov-file))
 
+---
+
+## Troubleshooting
+
+### Conda Activation Issue
+If you encounter the following error repeatedly:
+```bash
+CondaError: Run 'conda init' before 'conda activate' for 'conda activate ldm'
+```
+Try the following steps:
+1. Open PowerShell as Administrator.
+2. Run:
+   ```powershell
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+   & C:/ProgramData/miniconda3/shell/condabin/conda-hook.ps1
+
+   conda activate ldm
+   ```

@@ -10,6 +10,7 @@ import numpy as np
 import torch.utils.tensorboard as tb
 
 from runners.diffusion import Diffusion
+from config import ARGUMENTS, conditions
 
 torch.set_printoptions(sci_mode=False)
 
@@ -17,95 +18,34 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 def parse_args_and_config():
     parser = argparse.ArgumentParser(description=globals()["__doc__"])
+
+    # Adding all arguments here, using the static dictionary ARGUMENTS
+    parser.add_argument("--seed", type=int, default=ARGUMENTS["seed"], help="Random seed")
+    parser.add_argument("--exp", type=str, default=ARGUMENTS["exp"], help="Path for saving running related data.")
     
-    parser.add_argument("--seed", type=int, default=1234, help="Random seed")
-    parser.add_argument(
-        "--exp", type=str, default="exp", help="Path for saving running related data."
-    )
-    parser.add_argument(
-        "--doc",
-        type=str,
-        required=True,
-        help="A string for documentation purpose. "
-        "Will be the name of the log folder.",
-    )
-    parser.add_argument(
-        "--comment", type=str, default="", help="A string for experiment comment"
-    )
-    parser.add_argument(
-        "--verbose",
-        type=str,
-        default="info",
-        help="Verbose level: info | debug | warning | critical",
-    )
-    parser.add_argument(
-        "--sample",
-        action="store_true",
-        help="Whether to produce samples from the model",
-    )
-    parser.add_argument(
-        "-i",
-        "--image_folder",
-        type=str,
-        default="images",
-        help="The folder name of samples",
-    )
-    parser.add_argument(
-        "--ni",
-        type=bool,
-        default=True,
-        help="No interaction. Suitable for Slurm Job launcher",
-    )
-    parser.add_argument(
-        "--timesteps", type=int, default=1000, help="number of steps involved"
-    )
-    parser.add_argument(
-        "--model_type", type=str, default="face", help=" face | imagenet "
-    )
-    parser.add_argument(
-        "--batch_size", type=int, default=10
-    )
-    parser.add_argument(
-        "--class_num", type=int, default=10
-    )
-
-
-
-
-    parser.add_argument(
-        "-s",
-        "--sample_strategy",
-        type=str,
-        default=None,
-    )
-
-    parser.add_argument(
-        "--mu", type=float, default=1.0, help=""
-    )
-
-    parser.add_argument(
-        "--rho_scale", type=float, default=0.1
-    )
-    parser.add_argument(
-        "--prompt", type=str, default="black"
-    )
-    parser.add_argument(
-        "--stop", type=int, default=100
-    )
-    parser.add_argument(
-        "--ref_path", type=str, default=None
-    )
-    parser.add_argument(
-        "--ref_path2", type=str, default=None
-    )
-    parser.add_argument(
-        "--scale_weight", type=float, default=None
-    )
-    parser.add_argument(
-        "--rt", type=int, default=1
-    )
+    # Set --doc to use the value from ARGUMENTS, and remove the required=True part
+    parser.add_argument("--doc", type=str, default=ARGUMENTS["doc"], help="A string for documentation purpose.")
     
+    parser.add_argument("--comment", type=str, default=ARGUMENTS["comment"], help="A string for experiment comment")
+    parser.add_argument("--verbose", type=str, default=ARGUMENTS["verbose"], help="Verbose level: info | debug | warning | critical")
+    parser.add_argument("--sample", action="store_true", help="Whether to produce samples from the model")
+    parser.add_argument("-i", "--image_folder", type=str, default=ARGUMENTS["image_folder"], help="The folder name of samples")
+    parser.add_argument("--ni", type=bool, default=ARGUMENTS["ni"], help="No interaction. Suitable for Slurm Job launcher")
+    parser.add_argument("--timesteps", type=int, default=ARGUMENTS["timesteps"], help="Number of steps involved")
+    parser.add_argument("--model_type", type=str, default=ARGUMENTS["model_type"], help="face | imagenet")
+    parser.add_argument("--batch_size", type=int, default=ARGUMENTS["batch_size"])
+    parser.add_argument("--class_num", type=int, default=ARGUMENTS["class_num"])
+    parser.add_argument("-s", "--sample_strategy", type=str, default=ARGUMENTS["sample_strategy"])
+    parser.add_argument("--mu", type=float, default=ARGUMENTS["mu"])
+    parser.add_argument("--rho_scale", type=float, default=ARGUMENTS["rho_scale"])
+    parser.add_argument("--prompt", type=str, default=ARGUMENTS["prompt"])
+    parser.add_argument("--stop", type=int, default=ARGUMENTS["stop"])
+    parser.add_argument("--ref_path", type=str, default=ARGUMENTS["ref_path"])
+    parser.add_argument("--ref_path2", type=str, default=ARGUMENTS["ref_path2"])
+    parser.add_argument("--scale_weight", type=float, default=ARGUMENTS["scale_weight"])
+    parser.add_argument("--rt", type=int, default=ARGUMENTS["rt"])
 
+    # Parse arguments as usual
     args = parser.parse_args()
     args.log_path = os.path.join(args.exp, "logs", args.doc)
 
@@ -163,20 +103,21 @@ def parse_args_and_config():
     return args
 
 
-def main():
+def main_multi_conditions():
     args = parse_args_and_config()
     logging.info("Writing log file to {}".format(args.log_path))
     logging.info("Exp instance id = {}".format(os.getpid()))
     logging.info("Exp comment = {}".format(args.comment))
 
+    print(f"main_multi_conditions(): conditions = {conditions}")
+
     try:
         runner = Diffusion(args)
-        runner.sample(args.sample_strategy)
+        runner.sample_multi_conditions(conditions)
     except Exception:
         logging.error(traceback.format_exc())
 
     return 0
 
-
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main_multi_conditions())

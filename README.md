@@ -53,18 +53,23 @@ This project explores training-free multi-conditional image generation, enhancin
 ### 1. Qualitative Results
 
 ![Example 2](submission_docs/pics/qual1.png)
+
 *Figure 1: Illustration of Sequential Multi-Conditional Image Generation by our model.*
 
 ![Example 3](submission_docs/pics/qual2.png)
+
 *Figure 2: Segmentation Map + Text Prompt Multi-Conditional Image Generation Result.*
 
 ![Example 4](submission_docs/pics/qual3.png)
+
 *Figure 3: Sketch + Segmentation Map Multi-Conditional Image Generation Result.*
 
 ![Example 5](submission_docs/pics/qual4.png)
+
 *Figure 4: Face ID + Landmark + Text Prompt Multi-Conditional Image Generation Result.*
 
 ![Example 6](submission_docs/pics/qual5.png)
+
 *Figure 5: Sketch + Text Prompt Baseline Comparison.*
 
 ### 2. Quantitative Results

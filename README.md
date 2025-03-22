@@ -1,5 +1,5 @@
-## Automated Image Generation (CCDS24-0163) 
-### Enhancing Training-Free Multi-Conditional Image Generation through Approximated Energy-Based Guidance and Interaction Modeling in Diffusion Model Denoising
+# Automated Image Generation (CCDS24-0163) 
+## Enhancing Training-Free Multi-Conditional Image Generation through Approximated Energy-Based Guidance and Interaction Modeling in Diffusion Model Denoising
 
 ---
 
@@ -50,7 +50,7 @@ This project explores training-free multi-conditional image generation, enhancin
 
 ### 📸 Results
 
-### 1. Qualitative Results
+#### 1. Qualitative Results
 
 ![Example 2](submission_docs/pics/qual1.png)
 
@@ -72,7 +72,7 @@ This project explores training-free multi-conditional image generation, enhancin
 
 *Figure 5: Sketch + Text Prompt Baseline Comparison.*
 
-### 2. Quantitative Results
+#### 2. Quantitative Results
 
 ![Example 7](submission_docs/pics/quant1.png)
 
@@ -157,7 +157,7 @@ Try the following steps:
 
 #### 🙏 Acknowledgements
 
-This project is standing on the shoulders of giants and would not have been possible without the foundational knowledge, resources, and inspiration provided by the authors and researchers whose works have been referenced in this project. (See references in submission_docs/Hill_FYP_Final_Report)
+This project builds upon the invaluable contributions, foundational knowledge, resources, and inspiration provided by the authors and researchers whose works have been referenced in this project. (See references in submission_docs/Hill_FYP_Final_Report)
 Their pioneering contributions have laid the groundwork for advancements like mine. Hence, I would like to extend my deepest gratitude to them for their help in the completion of this project. 
 
 Additionally, I am extremely grateful to my project supervisor Professor Lu Shijian, and my student mentor Xu Muyu for their guidance and assistance in this endeavor, making this journey a memorable and fulfilling experience. 

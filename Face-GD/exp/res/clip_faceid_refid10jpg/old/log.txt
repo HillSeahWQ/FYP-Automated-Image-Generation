@@ -1,2 +1,0 @@
-(Nc : Na = 1: 1, Nc = 1 and Np = 1)
-python main2.py -i multi_cond -s arc_ddim --doc celeba_hq --timesteps 100 --rho_scale 100 --seed 12 --stop 100 --ref_path ./images/id10.png --batch_size 20 --prompt "black woman"  

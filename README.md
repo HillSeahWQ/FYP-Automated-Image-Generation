@@ -1,5 +1,5 @@
-## Automated Image Generation (CCDS24-0163) 
-### Enhancing Training-Free Multi-Conditional Image Generation through Approximated Energy-Based Guidance and Interaction Modeling in Diffusion Model Denoising
+# Automated Image Generation (CCDS24-0163) 
+## Enhancing Training-Free Multi-Conditional Image Generation through Approximated Energy-Based Guidance and Interaction Modeling in Diffusion Model Denoising
 
 ---
 
@@ -50,24 +50,29 @@ This project explores training-free multi-conditional image generation, enhancin
 
 ### 📸 Results
 
-### 1. Qualitative Results
+#### 1. Qualitative Results
 
 ![Example 2](submission_docs/pics/qual1.png)
+
 *Figure 1: Illustration of Sequential Multi-Conditional Image Generation by our model.*
 
 ![Example 3](submission_docs/pics/qual2.png)
+
 *Figure 2: Segmentation Map + Text Prompt Multi-Conditional Image Generation Result.*
 
 ![Example 4](submission_docs/pics/qual3.png)
+
 *Figure 3: Sketch + Segmentation Map Multi-Conditional Image Generation Result.*
 
 ![Example 5](submission_docs/pics/qual4.png)
+
 *Figure 4: Face ID + Landmark + Text Prompt Multi-Conditional Image Generation Result.*
 
 ![Example 6](submission_docs/pics/qual5.png)
+
 *Figure 5: Sketch + Text Prompt Baseline Comparison.*
 
-### 2. Quantitative Results
+#### 2. Quantitative Results
 
 ![Example 7](submission_docs/pics/quant1.png)
 
@@ -152,7 +157,7 @@ Try the following steps:
 
 #### 🙏 Acknowledgements
 
-This project is standing on the shoulders of giants and would not have been possible without the foundational knowledge, resources, and inspiration provided by the authors and researchers whose works have been referenced in this project. (See references in submission_docs/Hill_FYP_Final_Report)
+This project builds upon the invaluable contributions, foundational knowledge, resources, and inspiration provided by the authors and researchers whose works have been referenced in this project. (See references in submission_docs/Hill_FYP_Final_Report)
 Their pioneering contributions have laid the groundwork for advancements like mine. Hence, I would like to extend my deepest gratitude to them for their help in the completion of this project. 
 
 Additionally, I am extremely grateful to my project supervisor Professor Lu Shijian, and my student mentor Xu Muyu for their guidance and assistance in this endeavor, making this journey a memorable and fulfilling experience. 

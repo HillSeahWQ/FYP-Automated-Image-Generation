@@ -5,7 +5,7 @@
 > A training-free framework for multi-conditional image generation using harmonized energy-based denoising.
 
 ---
-
+ 
 **📍 Nanyang Technological University**  
 *College of Computing and Data Science*  
 **Final Year Project: Automated Image Generation (CCDS24-0163)**

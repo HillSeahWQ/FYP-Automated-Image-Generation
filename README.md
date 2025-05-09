@@ -1,10 +1,15 @@
-# Automated Image Generation (CCDS24-0163) 
+# ✨ **MATCHE Diffusion**
 
-## ✨ **MATCHE Denoising**  
-
-**M**ulti-conditional **A**pproximated **T**ime-independent **C**ondition **H**armonizing **E**nergy Guidance
+**M**ulti-conditional **A**pproximated **T**ime-independent **C**ondition **H**armonizing **E**nergy **G**uidance
 
 > A training-free framework for multi-conditional image generation using harmonized energy-based denoising.
+
+---
+
+**📍 Nanyang Technological University**  
+*College of Computing and Data Science*  
+**Final Year Project: Automated Image Generation (CCDS24-0163)**
+
 
 ---
 
@@ -26,7 +31,7 @@ This project explores training-free multi-conditional image generation, enhancin
 
 2. Energy-Based Guidance: Utilizes approximated time-independent energy functions to steer the denoising process.
 
-3. Interaction Modeling with context aware Gaussian kernels: Captures dependencies between multiple conditions to generate more realistic images.
+3. Interaction Modeling with context-aware Gaussian kernels: Captures complex and non-linear dependencies between multiple conditions to generate more realistic images.
 
 4. Pre-Trained Networks for Conditions: Incorporates specialized networks for constraints such as landmarks, face ID, and sketches.
 
@@ -161,7 +166,7 @@ Try the following steps:
 ### 📚 Resources
 
 - 📄 [Final Report](submission_docs/Hill_Seah_Wen_Qi_FYP_Amended_Final_Report.pdf)  
-- 🎞️ [Presentation Slides](submission_docs/Hill_FYP_Presentation_Slides.pdf)
+- 🎞️ [Presentation Slides](submission_docs/Hills_FYP_Presentation_Slides.pdf)
 
 ### 🙏 Acknowledgements
 

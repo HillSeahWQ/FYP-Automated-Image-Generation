@@ -1,5 +1,10 @@
 # Automated Image Generation (CCDS24-0163) 
-## Training-Free Multi-Conditional Image Generation through Approximated Energy-Based Guidance and Interaction Modeling in Diffusion Model Denoising
+
+## ✨ **MATCHE Denoising**  
+
+**M**ulti-conditional **A**pproximated **T**ime-independent **C**ondition **H**armonizing **E**nergy Guidance
+
+> A training-free framework for multi-conditional image generation using harmonized energy-based denoising.
 
 ---
 
@@ -153,9 +158,12 @@ Try the following steps:
 
    conda activate ldm
    ```
+### 📚 Resources
 
+- 📄 [Final Report](submission_docs/Hill_Seah_Wen_Qi_FYP_Amended_Final_Report.pdf)  
+- 🎞️ [Presentation Slides](submission_docs/Hill_FYP_Presentation_Slides.pdf)
 
-#### 🙏 Acknowledgements
+### 🙏 Acknowledgements
 
 This project builds upon the invaluable contributions, foundational knowledge, resources, and inspiration provided by the authors and researchers whose works have been referenced in this project. (See references in submission_docs/Hill_FYP_Final_Report)
 Their pioneering contributions have laid the groundwork for advancements like mine. Hence, I would like to extend my deepest gratitude to them for their help in the completion of this project. 

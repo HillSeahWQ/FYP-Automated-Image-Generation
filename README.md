@@ -1,5 +1,5 @@
 # Automated Image Generation (CCDS24-0163) 
-## Enhancing Training-Free Multi-Conditional Image Generation through Approximated Energy-Based Guidance and Interaction Modeling in Diffusion Model Denoising
+## Training-Free Multi-Conditional Image Generation through Approximated Energy-Based Guidance and Interaction Modeling in Diffusion Model Denoising
 
 ---
 
